@@ -2350,7 +2350,7 @@ function applyParsedExam(parsed, fname) {
   showToast('Exam questions extracted!', 'success');
   if (document.getElementById('builder-key') && document.getElementById('builder-key').style.display !== 'none') buildAK();
 }
-function removePdf(){
+async function removePdf(){
   S.pdfFile=null;S.pdfDoc=null;S.parsedExam=null;
   var pi=document.getElementById('pdf-preview');if(pi)pi.style.display='none';
   var pr=document.getElementById('pdf-parsed-result');if(pr)pr.style.display='none';
@@ -2515,7 +2515,7 @@ function buildEssays(){
   }
   el.innerHTML=h;
 }
-function saveEssayGradeEntry(i){
+async function saveEssayGradeEntry(i){
   var entries=window._essayEntries||[]; var e=entries[i]; if(!e) return;
   var f=document.getElementById('fl-'+i), a=document.getElementById('ac-'+i), fb=document.getElementById('fb-'+i);
   if(!f||!a||!f.value||!a.value){showToast('Enter both scores','');return;}
