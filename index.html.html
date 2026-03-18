@@ -572,47 +572,7 @@ tbody tr:hover{background:var(--gray-50);}
       <p>Check your scheduled tests below. Good luck!</p>
     </div>
     <h3 class="sec-title">Scheduled Tests</h3>
-    <div class="exam-card">
-      <div class="ec-head">
-        <div>
-          <div class="ec-title">English Language &mdash; Simulated Exam &middot; Version 2</div>
-          <div class="ec-meta"><span> Today &middot; 10:00</span><span> 2h 30min</span><span> 70 pts</span></div>
-        </div>
-        <span class="ec-status s-live"> Live Now</span>
-      </div>
-      <div class="countdown-bar urgent"> <span id="live-cd">Time remaining: 1:47:33</span></div>
-      <div class="ec-foot"><button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button></div>
-    </div>
-    <div class="exam-card">
-      <div class="ec-head">
-        <div>
-          <div class="ec-title">English Language &mdash; Simulated Exam &middot; Version 1</div>
-          <div class="ec-meta"><span> March 15, 2026 &middot; 10:00</span><span> 2h 30min</span><span> 70 pts</span></div>
-        </div>
-        <span class="ec-status s-upcoming">Upcoming</span>
-      </div>
-      <div class="countdown-bar"> <span>Starts in: 5d 14:23:07</span></div>
-      <div class="ec-foot"><button class="btn-sm btn-sm-outline" onclick="showInfoModal('EXAM2026-V2')">View Info</button></div>
-    </div>
-    <div class="exam-card">
-      <div class="ec-head">
-        <div>
-          <div class="ec-title">English Language &mdash; Practice Exam</div>
-          <div class="ec-meta"><span> Feb 20, 2026</span><span> Completed in 1h 52m</span></div>
-        </div>
-        <span class="ec-status s-done">Completed</span>
-      </div>
-      <div class="results-grid">
-        <div class="rt"><div class="rt-label">Task 1</div><div class="rt-score">7<span class="rt-max">/8</span></div></div>
-        <div class="rt"><div class="rt-label">Task 2</div><div class="rt-score">6<span class="rt-max">/8</span></div></div>
-        <div class="rt"><div class="rt-label">Task 3</div><div class="rt-score">8<span class="rt-max">/8</span></div></div>
-        <div class="rt"><div class="rt-label">Task 4</div><div class="rt-score">10<span class="rt-max">/12</span></div></div>
-        <div class="rt"><div class="rt-label">Task 5</div><div class="rt-score">11<span class="rt-max">/12</span></div></div>
-        <div class="rt"><div class="rt-label">Task 6</div><div class="rt-score">5<span class="rt-max">/6</span></div></div>
-        <div class="rt pending"><div class="rt-label">Task 7</div><div class="rt-score" style="font-size:13px;">Pending</div><div class="rt-max">Essay grading</div></div>
-        <div class="rt highlight"><div class="rt-label">Total</div><div class="rt-score">47<span class="rt-max">/62+</span></div></div>
-      </div>
-    </div>
+    <div id="student-exam-list"><div style="color:var(--gray-400);font-size:13px;padding:16px 0;">Loading exams...</div></div>
     <div id="student-results-section" style="display:none;"></div>
   </div>
 </div>
@@ -990,9 +950,9 @@ tbody tr:hover{background:var(--gray-50);}
 <div id="sec-announcements" class="asec">
   <div class="asec-title"><button class="back-btn" onclick="showSec('dashboard')">&#8592; Back</button>Announcements</div>
   <div class="acard"><div class="acard-title">New Announcement</div>
-    <div class="afl"><label>Title</label><input type="text" id="ann-title" placeholder="e.g. Exam this Saturday"></div>
+    <div class="afl"><label>Title</label><input type="text" id="ann-t" placeholder="e.g. Exam this Saturday"></div>
     <div class="afl" style="margin-top:10px;"><label>Message</label>
-      <textarea id="ann-body" rows="4" style="width:100%;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-family:Georgia,serif;font-size:13px;resize:vertical;"></textarea>
+      <textarea id="ann-b" rows="4" style="width:100%;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-family:Georgia,serif;font-size:13px;resize:vertical;"></textarea>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
       <button class="abtn abtn-pink" onclick="postAnnouncement(false)">Post (Popup)</button>
@@ -1146,19 +1106,34 @@ function safeCopy(text, successMsg) {
 
 
 
-function postAnnouncement(pin){
-  var t=document.getElementById('ann-title');
-  var b=document.getElementById('ann-body');
-  if(!t||!b||!t.value.trim()) return;
+async function postAnnouncement(pin){
+  var t=document.getElementById('ann-t');
+  var b=document.getElementById('ann-b');
+  if(!t||!b||!t.value.trim()||!b.value.trim()){ showToast('Please fill in both title and message',''); return; }
+  var title=t.value.trim(), body=b.value.trim();
+  // Update student-facing announcement
+  var annTitle=document.getElementById('ann-title'), annBody=document.getElementById('ann-body');
+  if(annTitle) annTitle.textContent=title;
+  if(annBody)  annBody.textContent=body;
+  // Pin on student dashboard if requested
+  if(pin){
+    var pt=document.getElementById('pin-title'), pb=document.getElementById('pin-body');
+    if(pt) pt.textContent=title;
+    if(pb) pb.textContent=body;
+    var pa=document.getElementById('pinned-ann'); if(pa) pa.classList.add('show');
+  }
+  // Add to history
   var h=document.getElementById('ann-history');
   if(h){
     var d=document.createElement('div');
     d.style.cssText='padding:12px;background:var(--gray-50);border-radius:8px;margin-bottom:8px;';
-    d.innerHTML='<div style="font-weight:600;font-size:13px;">'+t.value+'</div>'
-      +'<div style="font-size:12px;color:var(--gray-600);margin-top:4px;">'+b.value+'</div>'
+    d.innerHTML='<div style="font-weight:600;font-size:13px;">'+title+'</div>'
+      +'<div style="font-size:12px;color:var(--gray-600);margin-top:4px;">'+body+'</div>'
       +(pin?'<div style="margin-top:6px;"><span style="font-size:11px;color:var(--pink);font-weight:600;">PINNED</span></div>':'');
     h.insertBefore(d,h.firstChild);
   }
+  // Save to Supabase
+  await dbInsert('announcements',{title:title, body:body, pinned:pin?true:false});
   t.value=''; b.value='';
   showToast(pin?'Posted and pinned!':'Posted!','success');
 }
@@ -1383,7 +1358,67 @@ function enterDash() {
   showPage('page-student');
   setTimeout(function(){ document.getElementById('ann-overlay').classList.add('open'); }, 700);
   startLiveCountdown();
+  renderStudentExams();
   renderStudentResults();
+}
+
+function renderStudentExams() {
+  var container = document.getElementById('student-exam-list');
+  if (!container) return;
+  var schedKeys = Object.keys(S.schedule || {});
+  if (!schedKeys.length) {
+    container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;">No exams scheduled yet.</div>';
+    return;
+  }
+  var html = '';
+  schedKeys.forEach(function(code) {
+    var sc = S.schedule[code];
+    var ex = S.exams[code];
+    if (!ex) return;
+    var status = getExamStatus(sc.date, sc.time, sc.duration);
+    var dur = sc.duration || 150;
+    var dh = Math.floor(dur/60), dm = dur%60;
+    var durStr = (dh>0?dh+'h ':'')+dm+' min';
+    var compKey = S.student.email + '|' + code;
+    var isCompleted = S.completed[compKey];
+    // Build card
+    html += '<div class="exam-card">';
+    html += '<div class="ec-head"><div>';
+    html += '<div class="ec-title">' + ex.title + '</div>';
+    html += '<div class="ec-meta"><span>' + (sc.date||'') + ' &middot; ' + (sc.time||'') + '</span><span>' + durStr + '</span></div>';
+    html += '</div>';
+    // Status badge
+    if (isCompleted) {
+      html += '<span class="ec-status s-done">Completed</span>';
+    } else if (status === 'live') {
+      html += '<span class="ec-status s-live">Live Now</span>';
+    } else if (status === 'upcoming') {
+      html += '<span class="ec-status s-upcoming">Upcoming</span>';
+    } else {
+      html += '<span class="ec-status s-done">Ended</span>';
+    }
+    html += '</div>';
+    // Countdown bar
+    if (!isCompleted && status === 'live') {
+      html += '<div class="countdown-bar urgent"><span>Exam is live — enter your ID to start</span></div>';
+    } else if (!isCompleted && status === 'upcoming') {
+      html += '<div class="countdown-bar"><span>Not started yet</span></div>';
+    }
+    // Footer button
+    html += '<div class="ec-foot">';
+    if (isCompleted) {
+      html += '<button class="btn-sm btn-sm-outline" disabled>Submitted</button>';
+    } else if (status === 'live') {
+      html += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
+    } else if (status === 'upcoming') {
+      var info = ex.info ? ex.info : 'No info added.';
+      html += '<button class="btn-sm btn-sm-outline" onclick="showInfoModal(\''+code+'\')">View Info</button>';
+    } else {
+      html += '<button class="btn-sm btn-sm-outline" disabled>Exam Ended</button>';
+    }
+    html += '</div></div>';
+  });
+  container.innerHTML = html || '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;">No exams scheduled yet.</div>';
 }
 
 // FORGOT PASSWORD
@@ -1538,7 +1573,7 @@ function startExam(isReEntry){
 }
 
 function gotoTask(n){
-  if(S.curTask===7){var ta=document.getElementById('essay-ta');if(ta) S.answers.t7=ta.value;}
+  var _eta=document.getElementById('essay-ta-'+S.curTask);if(_eta) S.answers['t'+S.curTask]=_eta.value;
   S.curTask=n;
   for(var i=0;i<=7;i++){var p=document.getElementById('pill-'+i);if(p){p.classList.remove('active');if(i===n) p.classList.add('active');}}
   renderTask(n);
@@ -1588,7 +1623,7 @@ var TASKS={
 function renderTask(n){
   var main=document.getElementById('exam-main');
   if(!main) return;
-  if(S.curTask===7){var ta=document.getElementById('essay-ta');if(ta) S.answers.t7=ta.value;}
+  var _eta=document.getElementById('essay-ta-'+S.curTask);if(_eta) S.answers['t'+S.curTask]=_eta.value;
 
   if(n===0){
     var h='<div class="task-card">';
@@ -1630,7 +1665,7 @@ function renderTask(n){
   if(S.pdfDoc) h+='<div class="pdf-page-wrap"><canvas id="pdf-canvas-'+n+'"></canvas></div>';
 
   if(task.type==='listening'){
-    h+='<p class="task-instr">Listen and mark the correct answer A, B, C or D.</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Listen and mark the correct answer A, B, C or D.')+'</p>';
     var _audioSrc = window.S_audioURL || '';
     h+='<audio id="task-audio" src="'+_audioSrc+'" preload="metadata" style="display:none;"></audio>';
     h+='<div class="audio-player">';
@@ -1652,7 +1687,7 @@ function renderTask(n){
     }
   }
   if(task.type==='match'){
-    h+='<p class="task-instr">Read the questions (1-8) and find answers in paragraphs (A-F).</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Read the questions and find answers in the paragraphs.')+'</p>';
     h+='<div class="reading-box">';
     var pk=Object.keys(task.passages||{});
     for(var pi=0;pi<pk.length;pi++) h+='<p><strong>'+pk[pi]+'.</strong> '+task.passages[pk[pi]]+'</p>';
@@ -1669,14 +1704,14 @@ function renderTask(n){
     }
   }
   if(task.type==='reading'){
-    h+='<p class="task-instr">Read the text and mark the correct answer A, B, C or D.</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Read the text and mark the correct answer A, B, C or D.')+'</p>';
     if(task.text) h+='<div class="reading-box" style="margin-bottom:16px;">'+task.text+'</div>';
     for(var i=0;i<task.qs.length;i++){
       var q=task.qs[i];
       h+='<div class="q-block"><div class="q-text"><span class="q-num-inline">'+(i+1)+'.</span> '+q.q+'</div><div class="opts">';
       for(var j=0;j<task.opts.length;j++){
-        var l=task.opts[j],sel=S.answers.t3&&S.answers.t3[i+1]===l?' sel':'';
-        h+='<div class="opt'+sel+'" onclick="selAns(3,'+(i+1)+',\x27'+l+'\x27,this)"><div class="opt-letter">'+l+'</div><span>'+q.os[j]+'</span></div>';
+        var l=task.opts[j],sel=S.answers['t'+n]&&S.answers['t'+n][i+1]===l?' sel':'';
+        h+='<div class="opt'+sel+'" onclick="selAns('+n+','+(i+1)+',\x27'+l+'\x27,this)"><div class="opt-letter">'+l+'</div><span>'+q.os[j]+'</span></div>';
       }
       h+='</div></div>';
     }
@@ -1684,7 +1719,7 @@ function renderTask(n){
   if(task.type==='gapfill4'){
     var wb=task.wordBank||{};
     var wks=Object.keys(wb);
-    h+='<p class="task-instr">Drag each word into the correct gap, or tap a word then tap a gap.</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Drag each word into the correct gap, or tap a word then tap a gap.')+'</p>';
     // Word bank chips
     h+='<div class="wb-chips" id="wb-chips-t'+n+'">';
     for(var wi=0;wi<wks.length;wi++){
@@ -1719,7 +1754,7 @@ function renderTask(n){
   }
     if(task.type==='gapfill5'){
     var wc=task.wordChoices||[];
-    h+='<p class="task-instr">Choose the correct word for each gap from the dropdown.</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Choose the correct word for each gap.')+'</p>';
     if(task.text){
       // Replace ......(N) with inline dropdowns
       var txt5=task.text;
@@ -1760,7 +1795,7 @@ function renderTask(n){
     }
   }
     if(task.type==='dialogue'){
-    h+='<p class="task-instr">Complete the conversation. Choose the correct letter A-H for each gap. Two sentences are extra.</p>';
+    h+='<p class="task-instr">'+(task.instructions||'Complete the conversation by choosing the correct sentence for each gap.')+'</p>';
     var sk6=Object.keys(task.dialogueSents||{});
     var dl6=task.dialogue||[];
     h+='<div style="display:flex;gap:16px;flex-wrap:wrap;">';
@@ -1771,8 +1806,8 @@ function renderTask(n){
       var line6=dl6[di6];
       if(line6.indexOf('...(')!==-1){
         gn6++;
-        var ca6=S.answers.t6&&S.answers.t6[gn6]?S.answers.t6[gn6]:'';
-        var dd6='<select class="inline-dd" data-tn="6" data-q="'+gn6+'" onchange="selDD(6,'+gn6+',this)">';
+        var ca6=S.answers['t'+n]&&S.answers['t'+n][gn6]?S.answers['t'+n][gn6]:'';
+        var dd6='<select class="inline-dd" data-tn="'+n+'" data-q="'+gn6+'" onchange="selDD('+n+','+gn6+',this)">';
         dd6+='<option value="">('+gn6+')</option>';
         for(var sk6i=0;sk6i<sk6.length;sk6i++){
           var sl6=sk6[sk6i];
@@ -1788,16 +1823,19 @@ function renderTask(n){
     h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Sentences</div>';
     for(var sk6j=0;sk6j<sk6.length;sk6j++){
       var sk6key=sk6[sk6j];
-      var used6=S.answers.t6&&S.objectHasValue(S.answers.t6,sk6key);
+      var used6=S.answers['t'+n]&&S.objectHasValue(S.answers['t'+n],sk6key);
       h+='<div style="font-size:12px;margin:4px 0;padding:4px 6px;border-radius:6px;'+(used6?'opacity:.4;':'')+'"><strong>'+sk6key+'.</strong> '+task.dialogueSents[sk6key]+'</div>';
     }
     h+='</div></div>';
   }
     if(task.type==='essay'){
-    h+='<p class="task-instr">Write between 120-170 words.</p>';
-    h+='<div class="essay-prompt">Many young people in Georgia decide to learn more than one foreign language nowadays. What do YOU think about this? Give your own opinion and support it with arguments.</div>';
-    h+='<textarea class="essay-ta" id="essay-ta" placeholder="Write your essay here (120-170 words)...">'+(S.answers.t7||'')+'</textarea>';
-    h+='<div class="wcount" id="wc">0 words (120-170 required)</div>';
+    var _essayInstr = task.instructions || 'Write your response.';
+    var _essayPrompt = task.prompt || '';
+    var _essayAns = S.answers['t'+n] || '';
+    h+='<p class="task-instr">'+_essayInstr+'</p>';
+    if(_essayPrompt) h+='<div class="essay-prompt">'+_essayPrompt+'</div>';
+    h+='<textarea class="essay-ta" id="essay-ta-'+n+'" placeholder="Write your response here...">'+ _essayAns+'</textarea>';
+    h+='<div class="wcount" id="wc">0 words</div>';
   }
   h+='</div>';
 
@@ -1818,9 +1856,13 @@ function renderTask(n){
   main.innerHTML=h;
   if(S.pdfDoc) renderPdfPage(n+1,'pdf-canvas-'+n);
   if(task && task.type==='gapfill4') initDragDrop();
-  if(task.type==='essay'){
-    var ta=document.getElementById('essay-ta');
-    if(ta){ta.addEventListener('input',function(){S.answers.t7=ta.value;updWC();});updWC();}
+  if(task.type==='essay'||task.type==='writing'){
+    var _taId='essay-ta-'+n;
+    var ta=document.getElementById(_taId);
+    if(ta){
+      ta.addEventListener('input',(function(taskN,taEl){return function(){S.answers['t'+taskN]=taEl.value;updWC();};})(n,ta));
+      updWC();
+    }
   }
 }
 
@@ -2055,7 +2097,7 @@ function handlePdfUpload(e){
 }
 
 function parsePdfWithAI(b64,fname,progInt,progEl){
-  var prompt='This exam PDF may be in English, Georgian, or both. Parse ALL content exactly as written — preserve Georgian (ქართული) text character-for-character, do not translate anything. Return ONLY valid JSON with no extra text. Format: {"hasIntro":true,"introText":"Full intro/instructions text exactly as it appears on the first page, in whatever language it is written (Georgian or English). Include exam title, duration, general instructions, and any notes for students. If there is no intro page, set hasIntro to false and introText to empty string.","tasks":[{"task":1,"type":"listening","points":8,"question_count":8,"questions":["q text"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},{"task":2,"type":"match","points":8,"question_count":8,"questions":["statement"],"passages":{"A":"full paragraph"}},{"task":3,"type":"reading","points":8,"question_count":8,"text":"FULL reading passage","questions":["q"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},{"task":4,"type":"gapfill4","points":12,"question_count":12,"text":"Full article with gaps as ......(1) ......(2) in exact positions","word_bank":{"A":"word","B":"word"}},{"task":5,"type":"gapfill5","points":12,"question_count":12,"text":"Full article with gaps as ......(1) ......(2) in exact positions","choices":[["A. word","B. word","C. word","D. word"]]},{"task":6,"type":"dialogue","points":6,"question_count":6,"dialogue":["Speaker: text","Speaker: ...(1)"],"options":{"A":"sentence","B":"sentence"}},{"task":7,"type":"essay","points":16,"prompt":"essay task text"}]}. CRITICAL: (1) Preserve ALL text exactly as written — Georgian script must not be transliterated or translated. (2) For gapfill tasks include the COMPLETE article text with gaps marked as ......(1) ......(2) etc at their exact positions. (3) Include full reading passages. (4) Detect task type from content regardless of task number. (5) hasIntro must be true if ANY introductory/instructions page exists before the tasks begin.';
+  var prompt='You are parsing an English language exam PDF. The PDF may contain Georgian (ქართული) and/or English text — preserve ALL text EXACTLY as written, do not translate or transliterate anything. Return ONLY a valid JSON object with no markdown, no code blocks, no extra text. Use this exact format: {"hasIntro":true,"introText":"Copy the FULL intro/instructions page text exactly as it appears. If no intro page exists set hasIntro to false and introText to empty string.","tasks":[{"task":1,"type":"listening","points":8,"question_count":8,"instructions":"Copy the EXACT instruction text for this task from the PDF e.g. Listen to the recording and choose the best answer A B C or D","questions":["full question text"],"options":[["A. option text","B. option text","C. option text","D. option text"]]},{"task":2,"type":"match","points":8,"question_count":8,"instructions":"Copy EXACT instruction text from PDF","questions":["full statement text"],"passages":{"A":"Copy the COMPLETE paragraph A text exactly","B":"Complete paragraph B","C":"Complete paragraph C","D":"Complete paragraph D","E":"Complete paragraph E","F":"Complete paragraph F"}},{"task":3,"type":"reading","points":8,"question_count":8,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE reading passage WORD FOR WORD — do not summarize or shorten it AT ALL","questions":["full question text"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},{"task":4,"type":"gapfill4","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers in their EXACT positions written as ......(1) ......(2) etc","word_bank":{"A":"word","B":"word","C":"word"}},{"task":5,"type":"gapfill5","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers as ......(1) ......(2) etc in EXACT positions","choices":[["A. word","B. word","C. word","D. word"]]},{"task":6,"type":"dialogue","points":6,"question_count":6,"instructions":"Copy EXACT instruction text","dialogue":["Speaker: full line","Speaker: ...(1)","Speaker: full line"],"options":{"A":"sentence A text","B":"sentence B text","C":"sentence C text"}},{"task":7,"type":"essay","points":16,"instructions":"Copy EXACT instruction text","prompt":"Copy the EXACT essay question/prompt text from the PDF"}]}. RULES: (1) Extract EVERY task — do not skip any. (2) Copy ALL text verbatim — reading passages, articles, dialogues must be COMPLETE not summarized. (3) Georgian text must be copied character by character. (4) Gap markers must appear at their exact position in the text. (5) Detect task type from content not just task number — a task can be listening/match/reading/gapfill4/gapfill5/dialogue/essay/writing. (6) If the exam has more or fewer than 7 tasks adjust the tasks array accordingly.';
   var reqBody=JSON.stringify({
     model:'claude-sonnet-4-20250514',
     max_tokens:4000,
@@ -2106,6 +2148,8 @@ function applyParsedExam(parsed, fname) {
       TASKS[tn].title  = 'Task ' + tn;
       TASKS[tn].qcount = t.question_count || 0;
 
+      // Save instructions for all task types
+      TASKS[tn].instructions = t.instructions || '';
       if (t.type === 'listening' || t.type === 'reading') {
         TASKS[tn].qs   = [];
         TASKS[tn].opts = t.answer_options || ['A','B','C','D'];
@@ -2128,10 +2172,10 @@ function applyParsedExam(parsed, fname) {
         if (t.text) TASKS[tn].text = t.text;
         TASKS[tn].qcount      = t.question_count || 12;
       } else if (t.type === 'dialogue') {
-        TASKS[tn].dialogue     = t.dialogue || [];
+        TASKS[tn].dialogue      = t.dialogue || [];
         TASKS[tn].dialogueSents = t.options || {};
-        TASKS[tn].opts         = t.answer_options || ['A','B','C','D','E','F','G','H'];
-      } else if (t.type === 'essay') {
+        TASKS[tn].opts          = t.answer_options || ['A','B','C','D','E','F','G','H'];
+      } else if (t.type === 'essay' || t.type === 'writing') {
         TASKS[tn].prompt = t.prompt || '';
       }
     }
@@ -3681,6 +3725,8 @@ async function loadAllData() {
       }
     }
   } catch(e) { console.error('loadAllData error',e); }
+  // Refresh student exam list if student is logged in
+  if (S.student) renderStudentExams();
 }
 
 function startRealtimeSubscriptions() {
