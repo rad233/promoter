@@ -1522,7 +1522,8 @@ async function doUnlock() {
   }
   // Load exam data
   var ex = examRows[0];
-  S.exams[code] = {title:ex.title, code:code, duration:ex.duration||150, tasks:ex.tasks||[], info:ex.info||'', parsedExam:ex.parsed_exam||null};
+  S.exams[code] = {title:ex.title, code:code, duration:ex.duration||150, tasks:ex.tasks||[], info:ex.info||'', parsedExam:ex.parsed_exam||null, pts:ex.pts||70};
+  if (ex.answer_key) { if(!S.answerKey) S.answerKey={}; Object.assign(S.answerKey, ex.answer_key); }
   S.examCodes[code] = true;
   if (ex.parsed_exam) applyParsedExam(ex.parsed_exam, ex.title);
   // Load schedule
@@ -2063,7 +2064,7 @@ function renderSchedTable(){
       + '<td>' + durStr + '</td>'
       + '<td>' + badgeHtml + '</td>'
       + '<td><button class="abtn abtn-ghost" style="padding:3px 10px;font-size:11px;" onclick="openExamEdit(\'' + code + '\')">'
-      + (status==='live' ? 'Manage' : 'Edit') + '</button></td>'
+      + (status==='live' ? 'Manage' : status==='ended' ? 'Renew' : 'Edit') + '</button></td>'
       + '</tr>';
   }
   tbody.innerHTML = rows;
@@ -2097,38 +2098,42 @@ function handlePdfUpload(e){
 }
 
 function parsePdfWithAI(b64,fname,progInt,progEl){
-  var prompt='You are parsing an English language exam PDF. The PDF may contain Georgian (ქართული) and/or English text — preserve ALL text EXACTLY as written, do not translate or transliterate anything. Return ONLY a valid JSON object with no markdown, no code blocks, no extra text. Use this exact format: {"hasIntro":true,"introText":"Copy the FULL intro/instructions page text exactly as it appears. If no intro page exists set hasIntro to false and introText to empty string.","tasks":[{"task":1,"type":"listening","points":8,"question_count":8,"instructions":"Copy the EXACT instruction text for this task from the PDF e.g. Listen to the recording and choose the best answer A B C or D","questions":["full question text"],"options":[["A. option text","B. option text","C. option text","D. option text"]]},{"task":2,"type":"match","points":8,"question_count":8,"instructions":"Copy EXACT instruction text from PDF","questions":["full statement text"],"passages":{"A":"Copy the COMPLETE paragraph A text exactly","B":"Complete paragraph B","C":"Complete paragraph C","D":"Complete paragraph D","E":"Complete paragraph E","F":"Complete paragraph F"}},{"task":3,"type":"reading","points":8,"question_count":8,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE reading passage WORD FOR WORD — do not summarize or shorten it AT ALL","questions":["full question text"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},{"task":4,"type":"gapfill4","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers in their EXACT positions written as ......(1) ......(2) etc","word_bank":{"A":"word","B":"word","C":"word"}},{"task":5,"type":"gapfill5","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers as ......(1) ......(2) etc in EXACT positions","choices":[["A. word","B. word","C. word","D. word"]]},{"task":6,"type":"dialogue","points":6,"question_count":6,"instructions":"Copy EXACT instruction text","dialogue":["Speaker: full line","Speaker: ...(1)","Speaker: full line"],"options":{"A":"sentence A text","B":"sentence B text","C":"sentence C text"}},{"task":7,"type":"essay","points":16,"instructions":"Copy EXACT instruction text","prompt":"Copy the EXACT essay question/prompt text from the PDF"}]}. RULES: (1) Extract EVERY task — do not skip any. (2) Copy ALL text verbatim — reading passages, articles, dialogues must be COMPLETE not summarized. (3) Georgian text must be copied character by character. (4) Gap markers must appear at their exact position in the text. (5) Detect task type from content not just task number — a task can be listening/match/reading/gapfill4/gapfill5/dialogue/essay/writing. (6) If the exam has more or fewer than 7 tasks adjust the tasks array accordingly.';
-  var reqBody=JSON.stringify({
-    model:'claude-sonnet-4-20250514',
-    max_tokens:4000,
-    messages:[{role:'user',content:[
-      {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
-      {type:'text',text:prompt}
-    ]}]
-  });
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:reqBody
+  var prompt='You are parsing an English language exam PDF. The PDF may contain Georgian (ქართული) and/or English text — preserve ALL text EXACTLY as written, do not translate or transliterate anything. Return ONLY a valid JSON object with no markdown, no code blocks, no extra text. Use this exact format: {"hasIntro":true,"introText":"Copy the FULL intro/instructions page text exactly as it appears. If no intro page exists set hasIntro to false and introText to empty string.","tasks":[{"task":1,"type":"listening","points":8,"question_count":8,"instructions":"Copy the EXACT instruction text for this task from the PDF","questions":["full question text"],"options":[["A. option text","B. option text","C. option text","D. option text"]]},{"task":2,"type":"match","points":8,"question_count":8,"instructions":"Copy EXACT instruction text","questions":["full statement text"],"passages":{"A":"Copy the COMPLETE paragraph A text exactly","B":"Complete paragraph B","C":"Complete paragraph C","D":"Complete paragraph D","E":"Complete paragraph E","F":"Complete paragraph F"}},{"task":3,"type":"reading","points":8,"question_count":8,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE reading passage WORD FOR WORD","questions":["full question text"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},{"task":4,"type":"gapfill4","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers as ......(1) ......(2) etc in EXACT positions","word_bank":{"A":"word","B":"word"}},{"task":5,"type":"gapfill5","points":12,"question_count":12,"instructions":"Copy EXACT instruction text","text":"Copy the COMPLETE article text WORD FOR WORD with gap markers as ......(1) ......(2) etc","choices":[["A. word","B. word","C. word","D. word"]]},{"task":6,"type":"dialogue","points":6,"question_count":6,"instructions":"Copy EXACT instruction text","dialogue":["Speaker: full line","Speaker: ...(1)"],"options":{"A":"sentence A","B":"sentence B"}},{"task":7,"type":"essay","points":16,"instructions":"Copy EXACT instruction text","prompt":"Copy the EXACT essay question from the PDF"}]}. RULES: (1) Extract EVERY task. (2) Copy ALL text verbatim. (3) Georgian text must be copied character by character. (4) Gap markers must appear at exact positions. (5) Detect task type from content. (6) Adjust tasks array for actual number of tasks in exam.';
+
+  fetch('/api/parse', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({pdfBase64: b64, prompt: prompt})
   }).then(function(r){return r.json();}).then(function(data){
     clearInterval(progInt);
     if(progEl) progEl.style.width='100%';
     setTimeout(function(){
       document.getElementById('pdf-parsing').style.display='none';
       try{
-        var text=data.content.map(function(i){return i.text||'';}).join('');
-        var bt=String.fromCharCode(96);var btRx=new RegExp(bt+bt+bt+'json|'+bt+bt+bt,'g');var parsed=JSON.parse(text.replace(btRx,'').trim());
-        applyParsedExam(parsed,fname);
+        var text = data.text || '';
+        if (!text && data.error) throw new Error(data.error);
+        // Strip markdown code fences if present
+        var bt=String.fromCharCode(96);
+        var btRx=new RegExp(bt+bt+bt+'json|'+bt+bt+bt,'g');
+        text = text.replace(btRx,'').trim();
+        // Find JSON object in response
+        var jsonStart = text.indexOf('{');
+        var jsonEnd = text.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1) text = text.slice(jsonStart, jsonEnd+1);
+        var parsed = JSON.parse(text);
+        applyParsedExam(parsed, fname);
       }catch(err){
+        console.error('Parse error:', err);
         document.getElementById('pdf-status').textContent='Parse error';
         document.getElementById('pdf-parsed-result').style.display='block';
-        document.getElementById('parsed-summary').textContent='Could not auto-read PDF. Set answer key manually.';
+        document.getElementById('parsed-summary').textContent='Could not auto-read PDF. Try again or set answer key manually.';
       }
     },400);
-  }).catch(function(){
+  }).catch(function(err){
     clearInterval(progInt);
     document.getElementById('pdf-parsing').style.display='none';
-    showToast('PDF parse failed','');
+    showToast('PDF parse failed — check your connection','');
+    console.error('Fetch error:', err);
   });
 }
 
@@ -2222,9 +2227,10 @@ async function saveExam(){
   var duration = durEl ? (parseInt(durEl.value)||150) : 150;
   if (!title||!code) { showToast('Please fill in exam title and code',''); return; }
   var upperCode = code.toUpperCase();
-  await dbUpsert('exams',{code:upperCode, title:title, duration:duration, info:infoText, has_audio:false, tasks:S.parsedTasks||[], parsed_exam:S.parsedExam||null},'code');
+  var pts = document.getElementById('eb-pts') ? (parseInt(document.getElementById('eb-pts').value)||70) : 70;
+  await dbUpsert('exams',{code:upperCode, title:title, duration:duration, info:infoText, has_audio:false, tasks:S.parsedTasks||[], parsed_exam:S.parsedExam||null, answer_key:S.answerKey||{}, pts:pts},'code');
   S.examCodes[upperCode]=true;
-  S.exams[upperCode]={title:title, code:upperCode, duration:duration, hasAudio:false, tasks:S.parsedTasks||[], info:infoText};
+  S.exams[upperCode]={title:title, code:upperCode, duration:duration, hasAudio:false, tasks:S.parsedTasks||[], info:infoText, pts:pts};
   if (window._ebGeneratedIDs&&window._ebGeneratedIDs.length) {
     S.examIDs[upperCode]=window._ebGeneratedIDs.slice();
     for (var ii=0;ii<window._ebGeneratedIDs.length;ii++) {
@@ -2570,9 +2576,69 @@ function openExamEdit(code) {
   var status = sched ? getExamStatus(sched.date, sched.time, sched.duration) : 'unscheduled';
   if (status === 'live') {
     openLiveEditModal(code);
+  } else if (status === 'ended') {
+    renewExam(code);
   } else {
     openScheduledEditModal(code);
   }
+}
+
+function renewExam(code) {
+  var ex = S.exams && S.exams[code];
+  if (!ex) return;
+
+  // Restore parsed exam content from stored data
+  if (ex.parsedExam) {
+    S.parsedExam  = ex.parsedExam;
+    S.parsedTasks = ex.parsedExam.tasks || [];
+    applyParsedExam(ex.parsedExam, ex.title);
+  }
+
+  // Restore answer key
+  if (ex.answer_key) {
+    S.answerKey = JSON.parse(JSON.stringify(ex.answer_key));
+  }
+
+  // Pre-fill the builder fields
+  var titleEl = document.getElementById('eb-title');
+  var codeEl  = document.getElementById('eb-code');
+  var infoEl  = document.getElementById('eb-info');
+  var ptsEl   = document.getElementById('eb-pts');
+  var dateEl  = document.getElementById('eb-date');
+  var timeEl  = document.getElementById('eb-time-start');
+
+  if (titleEl) titleEl.value = ex.title || '';
+  if (codeEl)  { codeEl.value = ''; codeEl.removeAttribute('data-editing'); } // clear code so admin sets new one
+  if (infoEl)  infoEl.value  = ex.info  || '';
+  if (ptsEl)   ptsEl.value   = ex.pts   || 70;
+  if (dateEl)  dateEl.value  = '';
+  if (timeEl)  timeEl.value  = '10:00';
+
+  var dur = ex.duration || 150;
+  var dh = Math.floor(dur/60), dm = dur%60;
+  scrollDrumTo('drum-hours',   dh);
+  scrollDrumTo('drum-minutes', Math.floor(dm/5)*5);
+  onDrumScroll('hours');
+  onDrumScroll('minutes');
+
+  // Show PDF parsed result if we have parsed content
+  if (ex.parsedExam && ex.parsedExam.tasks && ex.parsedExam.tasks.length) {
+    var parts = [];
+    for (var i=0;i<ex.parsedExam.tasks.length;i++) parts.push('Task '+ ex.parsedExam.tasks[i].task+' ('+( ex.parsedExam.tasks[i].question_count||0)+'q)');
+    var summEl = document.getElementById('parsed-summary');
+    var statusEl = document.getElementById('pdf-status');
+    var resultEl = document.getElementById('pdf-parsed-result');
+    if (summEl) summEl.textContent = 'Restored: ' + parts.join(', ') + (ex.parsedExam.hasIntro?' + Intro':'');
+    if (statusEl) statusEl.textContent = 'Restored from previous exam';
+    if (resultEl) resultEl.style.display = 'block';
+  }
+
+  // Update builder title
+  var titleBar = document.querySelector('#exam-builder-view .asec-title');
+  if (titleBar) titleBar.innerHTML = '<button class="back-btn" onclick="hideExamBuilder()">&larr; Back</button> Renew Exam <span style="font-size:13px;color:var(--gray-400);font-weight:400;">— enter a new exam code to publish</span>';
+
+  showToast('Exam content restored! Enter a new code and date to republish.', 'success');
+  showExamBuilder();
 }
 
 function openLiveEditModal(code) {
@@ -2930,126 +2996,189 @@ function closeExamPreview() {
 function buildPreviewContent() {
   var body = document.getElementById('preview-body');
   if (!body) return;
-
-  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && k <= 8; }).sort(function(a,b){return a-b;});
+  if (!S.answerKey) S.answerKey = {};
+  var ls = ['A','B','C','D','E','F','G','H'];
+  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1; }).sort(function(a,b){return a-b;});
 
   var h = '<div style="padding:20px;">';
-  // Header
-  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">';
   h += '<div style="font-family:Georgia,serif;font-size:22px;font-weight:700;">Exam Preview &amp; Edit</div>';
   h += '<button onclick="closeExamPreview()" style="background:none;border:1.5px solid var(--gray-300);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;">Close</button>';
   h += '</div>';
+  h += '<div style="background:#fff8e1;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px;">Select the correct answer for each question to build the answer key. This is only visible to you and used for auto-grading.</div>';
 
-  // Task pills nav
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">';
-  for (var pi = 0; pi < taskKeys.length; pi++) {
-    var tn = taskKeys[pi];
-    var tk = TASKS[tn];
-    if (!tk) continue;
-    h += '<button onclick="previewScrollTo(\'ptask-'+tn+'\')" style="padding:6px 14px;border:1.5px solid var(--gray-200);border-radius:20px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;">Task '+tn+'</button>';
+  for (var pi2=0;pi2<taskKeys.length;pi2++) {
+    var tnp=taskKeys[pi2]; if(!TASKS[tnp]) continue;
+    h += '<button onclick="previewScrollTo(\'ptask-'+tnp+'\')" style="padding:6px 14px;border:1.5px solid var(--gray-200);border-radius:20px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;">Task '+tnp+'</button>';
   }
   h += '</div>';
 
-  // Each task section
-  for (var ti = 0; ti < taskKeys.length; ti++) {
-    var tn2 = taskKeys[ti];
-    var tk2 = TASKS[tn2];
-    if (!tk2) continue;
+  for (var ti=0;ti<taskKeys.length;ti++) {
+    var tn2=taskKeys[ti]; var tk2=TASKS[tn2]; if(!tk2) continue;
+    var isEssay2 = tk2.type==='essay'||tk2.type==='writing';
 
     h += '<div id="ptask-'+tn2+'" style="background:#fff;border:1.5px solid var(--gray-200);border-radius:14px;padding:20px;margin-bottom:16px;">';
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">';
     h += '<div style="font-weight:700;font-size:15px;">Task '+tn2+' <span style="color:var(--gray-400);font-size:12px;font-weight:400;">('+tk2.type+')</span></div>';
-    h += '<span style="font-size:11px;color:var(--pink);font-weight:600;">'+tk2.pts+' pts</span>';
+    h += '<div style="display:flex;align-items:center;gap:6px;">';
+    h += '<input type="number" value="'+(tk2.pts||0)+'" min="0" onchange="previewEditPts('+tn2+',this.value)" style="width:60px;padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;font-weight:700;color:var(--pink);text-align:center;outline:none;">';
+    h += '<span style="font-size:11px;color:var(--pink);font-weight:600;">pts</span>';
+    h += '</div></div>';
+    // Editable instructions
+    h += '<div style="margin-bottom:14px;">';
+    h += '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Task Instructions</label>';
+    h += '<input type="text" value="'+escapeAttr(tk2.instructions||'')+'" onchange="previewEditInstr('+tn2+',this.value)" placeholder="e.g. Listen and mark the correct answer A, B, C or D." style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;outline:none;">';
     h += '</div>';
 
-    // Editable text/passage
+    // Editable article text
     if (tk2.text) {
-      h += '<div style="margin-bottom:12px;">';
-      h += '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Article Text</label>';
+      h += '<div style="margin-bottom:14px;">';
+      h += '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Article / Passage Text</label>';
       h += '<textarea id="pedit-text-'+tn2+'" rows="5" style="width:100%;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:Georgia,serif;resize:vertical;">'+tk2.text+'</textarea>';
       h += '</div>';
     }
 
-    // Reading passage
-    if (tk2.type === 'reading' && tk2.text) {
-      // already handled above
-    }
-
-    // Questions list
-    if (tk2.qs && tk2.qs.length) {
-      h += '<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);">Questions</div>';
-      for (var qi = 0; qi < tk2.qs.length; qi++) {
-        var q = tk2.qs[qi];
-        h += '<div style="margin-bottom:10px;padding:10px;background:var(--gray-50);border-radius:8px;">';
-        h += '<div style="font-size:11px;color:var(--gray-400);margin-bottom:4px;">Q'+(qi+1)+'</div>';
-        h += '<input type="text" value="'+escapeAttr(q.q||'')+'" onchange="previewEditQ('+tn2+','+qi+',\'q\',this.value)" style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;margin-bottom:6px;">';
+    // MCQ tasks (listening, reading, match)
+    if (tk2.qs && tk2.qs.length && !isEssay2) {
+      h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:10px;">Questions &amp; Answer Key</div>';
+      for (var qi=0;qi<tk2.qs.length;qi++) {
+        var q=tk2.qs[qi];
+        var akKey='t'+tn2+'_q'+(qi+1);
+        var akVal=S.answerKey[akKey]||'';
+        h += '<div style="margin-bottom:12px;padding:12px;background:var(--gray-50);border-radius:8px;">';
+        h += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">';
+        h += '<span style="font-size:12px;font-weight:700;color:var(--pink);min-width:24px;">'+(qi+1)+'.</span>';
+        h += '<input type="text" value="'+escapeAttr(q.q||'')+'" onchange="previewEditQ('+tn2+','+qi+',\'q\',this.value)" style="flex:1;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;">';
+        h += '</div>';
         if (q.os && q.os.length) {
-          var ls = ['A','B','C','D','E','F'];
-          for (var oi = 0; oi < q.os.length; oi++) {
-            h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
-            h += '<span style="font-size:11px;font-weight:700;color:var(--gray-500);width:16px;">'+ls[oi]+'.</span>';
-            h += '<input type="text" value="'+escapeAttr(q.os[oi]||'')+'" onchange="previewEditQ('+tn2+','+qi+',\'o'+oi+'\',this.value)" style="flex:1;padding:5px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+          for (var oi=0;oi<q.os.length;oi++) {
+            var optL=ls[oi]; var isCorr=akVal===optL;
+            h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:6px 10px;border-radius:6px;'+(isCorr?'background:#e8f5e9;border:1.5px solid #4caf50;':'background:#fff;border:1.5px solid var(--gray-200);')+'">';
+            h += '<input type="checkbox" '+(isCorr?'checked':'')+' onchange="setAK(\''+akKey+'\',\''+optL+'\','+tn2+',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:#4caf50;flex-shrink:0;">';
+            h += '<span style="font-size:11px;font-weight:700;color:'+(isCorr?'#2e7d32':'var(--gray-500)')+';width:18px;">'+optL+'.</span>';
+            h += '<input type="text" value="'+escapeAttr(q.os[oi]||'')+'" onchange="previewEditQ('+tn2+','+qi+',\'o'+oi+'\',this.value)" style="flex:1;padding:4px 8px;border:none;background:transparent;font-size:12px;outline:none;">';
             h += '</div>';
           }
+        } else {
+          // Match — dropdown
+          h += '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">';
+          h += '<span style="font-size:11px;color:var(--gray-500);">Correct answer:</span>';
+          h += '<select onchange="setAKDirect(\''+akKey+'\',this.value)" style="padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+          h += '<option value="">-- select --</option>';
+          var mOpts=tk2.opts||['A','B','C','D','E','F'];
+          for (var moi=0;moi<mOpts.length;moi++) h += '<option value="'+mOpts[moi]+'"'+(akVal===mOpts[moi]?' selected':'')+'>'+mOpts[moi]+'</option>';
+          h += '</select></div>';
         }
         h += '</div>';
       }
     }
 
-    // Word bank for gapfill4
-    if (tk2.type === 'gapfill4' && tk2.wordBank) {
-      var wbKeys = Object.keys(tk2.wordBank);
-      h += '<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);">Word Bank</div>';
+    // Gapfill4: word bank + answer key dropdowns
+    if (tk2.type==='gapfill4' && tk2.wordBank) {
+      var wbKeys=Object.keys(tk2.wordBank);
+      h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Word Bank</div>';
+      h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">';
+      for (var wi=0;wi<wbKeys.length;wi++) {
+        var wk=wbKeys[wi];
+        h += '<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:11px;font-weight:700;color:var(--gray-500);">'+wk+'.</span>';
+        h += '<input type="text" value="'+escapeAttr(tk2.wordBank[wk]||'')+'" onchange="previewEditWordBank('+tn2+',\''+wk+'\',this.value)" style="width:90px;padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;"></div>';
+      }
+      h += '</div>';
+      h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Answer Key (per gap)</div>';
+      var gapCnt4=tk2.qcount||wbKeys.length;
       h += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
-      for (var wi = 0; wi < wbKeys.length; wi++) {
-        var wk = wbKeys[wi];
-        h += '<div style="display:flex;align-items:center;gap:4px;">';
-        h += '<span style="font-size:11px;font-weight:700;color:var(--gray-500);">'+wk+'.</span>';
-        h += '<input type="text" value="'+escapeAttr(tk2.wordBank[wk]||'')+'" onchange="previewEditWordBank('+tn2+',\''+wk+'\',this.value)" style="width:90px;padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
-        h += '</div>';
+      for (var gi4=1;gi4<=gapCnt4;gi4++) {
+        var akk4='t'+tn2+'_q'+gi4; var akv4=S.answerKey[akk4]||'';
+        h += '<div style="display:flex;align-items:center;gap:6px;background:var(--gray-50);border-radius:8px;padding:6px 10px;">';
+        h += '<span style="font-size:12px;font-weight:700;color:var(--pink);">'+gi4+'.</span>';
+        h += '<select onchange="setAKDirect(\''+akk4+'\',this.value)" style="padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+        h += '<option value="">--</option>';
+        for (var wki=0;wki<wbKeys.length;wki++) {
+          var wkl=wbKeys[wki]; var wkv=tk2.wordBank[wkl];
+          h += '<option value="'+wkl+'"'+(akv4===wkl?' selected':'')+'>'+wkl+'. '+wkv+'</option>';
+        }
+        h += '</select></div>';
       }
       h += '</div>';
     }
 
-    // Choices for gapfill5
-    if (tk2.type === 'gapfill5' && tk2.wordChoices && tk2.wordChoices.length) {
-      h += '<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);">Gap Choices</div>';
-      var ls5 = ['A','B','C','D'];
-      for (var ci = 0; ci < tk2.wordChoices.length; ci++) {
-        var ch = tk2.wordChoices[ci];
-        h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">';
-        h += '<span style="font-size:11px;font-weight:700;color:var(--gray-500);min-width:20px;">'+(ci+1)+'.</span>';
-        for (var li = 0; li < ls5.length; li++) {
-          h += '<div style="display:flex;align-items:center;gap:3px;">';
-          h += '<span style="font-size:10px;color:var(--gray-400);">'+ls5[li]+'.</span>';
-          h += '<input type="text" value="'+escapeAttr((ch[li]||'').replace(/^[A-D]\.\s*/,''))+'" onchange="previewEditChoice('+tn2+','+ci+','+li+',this.value)" style="width:80px;padding:4px 6px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:11px;">';
+    // Gapfill5: choices + answer key
+    if (tk2.type==='gapfill5' && tk2.wordChoices && tk2.wordChoices.length) {
+      h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Gap Choices &amp; Answer Key</div>';
+      for (var ci5=0;ci5<tk2.wordChoices.length;ci5++) {
+        var ch5=tk2.wordChoices[ci5]; var akk5='t'+tn2+'_q'+(ci5+1); var akv5=S.answerKey[akk5]||'';
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;padding:8px;background:var(--gray-50);border-radius:8px;">';
+        h += '<span style="font-size:12px;font-weight:700;color:var(--pink);min-width:20px;">'+(ci5+1)+'.</span>';
+        for (var li5=0;li5<ls.length&&li5<ch5.length;li5++) {
+          var w5=(ch5[li5]||'').replace(/^[A-D]\.\s*/,''); var isC5=akv5===ls[li5];
+          h += '<div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;'+(isC5?'background:#e8f5e9;border:1.5px solid #4caf50;':'background:#fff;border:1.5px solid var(--gray-200);')+'">';
+          h += '<input type="checkbox" '+(isC5?'checked':'')+' onchange="setAK(\''+akk5+'\',\''+ls[li5]+'\','+tn2+',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:#4caf50;">';
+          h += '<span style="font-size:11px;font-weight:700;color:'+(isC5?'#2e7d32':'var(--gray-500)')+';">'+ls[li5]+'. '+escapeAttr(w5)+'</span>';
           h += '</div>';
         }
         h += '</div>';
       }
     }
 
-    // Dialogue sentences
-    if (tk2.type === 'dialogue' && tk2.dialogueSents) {
-      var dsk = Object.keys(tk2.dialogueSents);
-      h += '<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);">Sentences</div>';
-      for (var dsi = 0; dsi < dsk.length; dsi++) {
-        var dskey = dsk[dsi];
+    // Dialogue: sentences + answer key dropdowns
+    if (tk2.type==='dialogue' && tk2.dialogueSents) {
+      var dsk2=Object.keys(tk2.dialogueSents);
+      h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Sentences</div>';
+      for (var dsi2=0;dsi2<dsk2.length;dsi2++) {
+        var dsk2k=dsk2[dsi2];
         h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
-        h += '<span style="font-size:11px;font-weight:700;color:var(--gray-500);width:16px;">'+dskey+'.</span>';
-        h += '<input type="text" value="'+escapeAttr(tk2.dialogueSents[dskey]||'')+'" onchange="previewEditDialogue('+tn2+',\''+dskey+'\',this.value)" style="flex:1;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+        h += '<span style="font-size:11px;font-weight:700;color:var(--gray-500);width:16px;">'+dsk2k+'.</span>';
+        h += '<input type="text" value="'+escapeAttr(tk2.dialogueSents[dsk2k]||'')+'" onchange="previewEditDialogue('+tn2+',\''+dsk2k+'\',this.value)" style="flex:1;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+        h += '</div>';
+      }
+      var dl2=tk2.dialogue||[]; var dlGaps=0;
+      for (var dgi=0;dgi<dl2.length;dgi++) { if(dl2[dgi].indexOf('...(')!==-1) dlGaps++; }
+      if (dlGaps>0) {
+        h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-top:12px;margin-bottom:8px;">Answer Key (per gap)</div>';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+        for (var dg2=1;dg2<=dlGaps;dg2++) {
+          var akkD='t'+tn2+'_q'+dg2; var akvD=S.answerKey[akkD]||'';
+          h += '<div style="display:flex;align-items:center;gap:6px;background:var(--gray-50);border-radius:8px;padding:6px 10px;">';
+          h += '<span style="font-size:12px;font-weight:700;color:var(--pink);">'+dg2+'.</span>';
+          h += '<select onchange="setAKDirect(\''+akkD+'\',this.value)" style="padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:12px;">';
+          h += '<option value="">--</option>';
+          for (var ds3=0;ds3<dsk2.length;ds3++) h += '<option value="'+dsk2[ds3]+'"'+(akvD===dsk2[ds3]?' selected':'')+'>'+dsk2[ds3]+'</option>';
+          h += '</select></div>';
+        }
         h += '</div>';
       }
     }
 
-    h += '</div>'; // close task section
+    // Essay
+    if (isEssay2) {
+      h += '<div style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;color:var(--gray-500);margin-bottom:10px;">Writing task — graded manually. No answer key needed.</div>';
+      if (tk2.prompt) {
+        h += '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Essay Prompt</label>';
+        h += '<textarea id="pedit-prompt-'+tn2+'" rows="3" style="width:100%;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:Georgia,serif;resize:vertical;">'+escapeAttr(tk2.prompt||'')+'</textarea>';
+      }
+    }
+
+    h += '</div>';
   }
 
-  // Save button
   h += '<button onclick="previewSaveEdits()" class="abtn abtn-pink" style="width:100%;justify-content:center;margin-top:8px;padding:14px;">Save All Changes &amp; Close</button>';
   h += '</div>';
-
   body.innerHTML = h;
+}
+
+function setAK(akKey, letter, tn2, checked) {
+  if (!S.answerKey) S.answerKey = {};
+  if (checked) S.answerKey[akKey] = letter;
+  else delete S.answerKey[akKey];
+  buildPreviewContent();
+  setTimeout(function(){ previewScrollTo('ptask-'+tn2); }, 60);
+}
+
+function setAKDirect(akKey, val) {
+  if (!S.answerKey) S.answerKey = {};
+  if (val) S.answerKey[akKey] = val;
+  else delete S.answerKey[akKey];
 }
 
 function escapeAttr(str) {
@@ -3059,6 +3188,14 @@ function escapeAttr(str) {
 function previewScrollTo(id) {
   var el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function previewEditPts(tn, val) {
+  if (TASKS[tn]) TASKS[tn].pts = parseInt(val) || 0;
+}
+
+function previewEditInstr(tn, val) {
+  if (TASKS[tn]) TASKS[tn].instructions = val;
 }
 
 function previewEditQ(tn, qi, field, val) {
@@ -3087,12 +3224,30 @@ function previewEditDialogue(tn, key, val) {
 }
 
 function previewSaveEdits() {
-  // Save text edits from textareas
-  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && k <= 8; });
+  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1; });
   for (var ti = 0; ti < taskKeys.length; ti++) {
     var tn = taskKeys[ti];
     var ta = document.getElementById('pedit-text-' + tn);
     if (ta && TASKS[tn]) TASKS[tn].text = ta.value;
+    var tp = document.getElementById('pedit-prompt-' + tn);
+    if (tp && TASKS[tn]) TASKS[tn].prompt = tp.value;
+  }
+  // Sync updated pts and instructions back to parsedTasks
+  if (S.parsedTasks) {
+    for (var pi3=0;pi3<S.parsedTasks.length;pi3++) {
+      var tn3 = S.parsedTasks[pi3].task;
+      if (TASKS[tn3]) {
+        S.parsedTasks[pi3].points = TASKS[tn3].pts;
+        S.parsedTasks[pi3].instructions = TASKS[tn3].instructions;
+      }
+    }
+  }
+  // Save answer key to active exam in DB
+  if (S.activeExamCode || (S.parsedExam && S.examCodes)) {
+    var examCode = S.activeExamCode || Object.keys(S.examCodes)[0];
+    if (examCode && S.exams[examCode]) {
+      dbUpdate('exams', {answer_key: S.answerKey||{}}, {code: examCode});
+    }
   }
   showToast('Changes saved!', 'success');
   closeExamPreview();
@@ -3380,30 +3535,32 @@ function renderStudentResults() {
 
     var taskCount = (ex.tasks && ex.tasks.length) ? ex.tasks.length : 7;
     var totalScore = 0, totalMax = ex.pts || 70, allGraded = true;
+    // Recalculate totalMax from actual grade max values if all graded
+    var gradeMaxSum = 0;
     var taskCards  = '';
 
     for (var t = 1; t <= taskCount; t++) {
       var tKey    = 't' + t;
-      var isEssay = (ex.tasks && ex.tasks[t-1] && ex.tasks[t-1].type === 'essay');
-      // Essay task uses grades.essay
-      var tGrade  = isEssay ? grades.essay : grades[tKey];
-
-      if (tGrade) {
-        totalScore += tGrade.score;
-        var clickable = tGrade.feedback ? 'onclick="showTaskFeedback(&quot;' + code + '&quot;,&quot;' + tKey + '&quot;)" style="cursor:pointer;"' : '';
-        taskCards += '<div class="rt" ' + clickable + '>'
-          + '<div class="rt-label">Task ' + t + (tGrade.feedback ? ' \u2022' : '') + (tLbl3?'<br><span style=\'font-size:9px;font-weight:400;opacity:.65;\'>'+tLbl3+'</span>':'') + '</div>'
-          + '<div class="rt-score">' + tGrade.score + '<span class="rt-max">/' + tGrade.max + '</span></div>'
-          + '</div>';
-      } else {
-        allGraded = false;
-        var tType3 = (ex.tasks&&ex.tasks[t-1]&&ex.tasks[t-1].type)||'';
-        var tLbl3 = tType3==='essay'||tType3==='writing' ? 'Writing' :
+      var isEssay = (ex.tasks && ex.tasks[t-1] && (ex.tasks[t-1].type === 'essay' || ex.tasks[t-1].type === 'writing'));
+      var tType3  = (ex.tasks&&ex.tasks[t-1]&&ex.tasks[t-1].type)||'';
+      var tLbl3   = tType3==='essay'||tType3==='writing' ? 'Writing' :
                     tType3==='listening' ? 'Listening' :
                     tType3==='reading'   ? 'Reading'   :
                     tType3==='match'     ? 'Matching'  :
                     tType3==='gapfill4'||tType3==='gapfill5' ? 'Gap Fill' :
                     tType3==='dialogue'  ? 'Dialogue'  : '';
+      var tGrade  = isEssay ? (grades['wt'+t] || grades.essay) : grades[tKey];
+
+      if (tGrade) {
+        totalScore += tGrade.score;
+        gradeMaxSum += tGrade.max;
+        var dotMark = tGrade.feedback ? ' \u2022' : '';
+        taskCards += '<div class="rt" onclick="showTaskFeedback(\'' + code + '\',\'' + tKey + '\')" style="cursor:pointer;">'
+          + '<div class="rt-label">Task ' + t + dotMark + (tLbl3?'<br><span style=\'font-size:9px;font-weight:400;opacity:.65;\'>'+tLbl3+'</span>':'') + '</div>'
+          + '<div class="rt-score">' + tGrade.score + '<span class="rt-max">/' + tGrade.max + '</span></div>'
+          + '</div>';
+      } else {
+        allGraded = false;
         taskCards += '<div class="rt pending">'
           + '<div class="rt-label">Task ' + t + (tLbl3?'<br><span style=\'font-size:9px;font-weight:400;opacity:.65;\'>'+tLbl3+'</span>':'') + '</div>'
           + '<div class="rt-score" style="font-size:13px;">Pending</div>'
@@ -3413,7 +3570,8 @@ function renderStudentResults() {
     }
 
     // Total + pass/fail
-    var passMark = Math.ceil(totalMax * 0.25);
+    if (gradeMaxSum > 0) totalMax = gradeMaxSum;
+    var passMark = Math.ceil((ex.pts || totalMax) * 0.25);
     var passed   = totalScore >= passMark;
     var statusBadge;
     if (!allGraded) {
@@ -3452,11 +3610,8 @@ function showTaskFeedback(examCode, taskKey) {
   var email    = S.student ? S.student.email : '';
   var gradeKey = email + '|' + examCode;
   var grade    = S.grades[gradeKey] && S.grades[gradeKey][taskKey];
-  // fallback: check essay stored under legacy key
-  if (!grade && taskKey === 'essay') {
-    var eg = S.grades[email + '|ESSAY'];
-    grade = eg && eg.essay;
-  }
+  // also check writing task key
+  if (!grade) { var tNum = taskKey.replace('t',''); grade = S.grades[gradeKey] && S.grades[gradeKey]['wt'+tNum]; }
   if (!grade) return;
   var taskNum  = taskKey.replace('t','');
   var isEssay  = grade.fluency !== undefined;
@@ -3469,10 +3624,10 @@ function showTaskFeedback(examCode, taskKey) {
   if (titleEl) titleEl.textContent = 'Task ' + taskNum + ' Result';
 
   var h = '<div style="background:var(--gray-50);border-radius:10px;padding:14px 16px;font-size:13px;line-height:2;">';
-  h += '<div><strong>Score:</strong> ' + grade.score + ' / ' + grade.max + '</div>';
+  h += '<div><strong>Score:</strong> <span style="font-size:18px;font-weight:700;color:var(--pink);">' + grade.score + '</span> / ' + grade.max + '</div>';
   if (isEssay) {
-    h += '<div><strong>Fluency:</strong> ' + grade.fluency + ' / 8</div>';
-    h += '<div><strong>Accuracy:</strong> ' + grade.accuracy + ' / 8</div>';
+    h += '<div><strong>Fluency:</strong> ' + grade.fluency + ' / ' + Math.floor(grade.max/2) + '</div>';
+    h += '<div><strong>Accuracy:</strong> ' + grade.accuracy + ' / ' + Math.floor(grade.max/2) + '</div>';
   }
   h += '</div>';
   if (grade.feedback) {
@@ -3480,6 +3635,8 @@ function showTaskFeedback(examCode, taskKey) {
     h += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--pink);margin-bottom:6px;">Feedback</div>';
     h += '<div style="font-size:13px;line-height:1.7;color:var(--charcoal);">' + grade.feedback + '</div>';
     h += '</div>';
+  } else {
+    h += '<div style="margin-top:10px;font-size:12px;color:var(--gray-400);text-align:center;">No feedback provided for this task.</div>';
   }
   body.innerHTML = h;
   modal.classList.add('open');
@@ -3491,72 +3648,122 @@ function openTaskGradeModal(studentEmail, examCode, taskNum, maxScore) {
   var body    = document.getElementById('info-modal-body');
   var titleEl = modal ? modal.querySelector('h3') : null;
   if (!modal || !body) return;
-  if (titleEl) titleEl.textContent = 'Grade Task ' + taskNum;
+  if (titleEl) titleEl.textContent = 'Task ' + taskNum + ' — ' + studentEmail.split('@')[0];
 
   var gradeKey = studentEmail + '|' + examCode;
   var existing = S.grades[gradeKey] && S.grades[gradeKey]['t'+taskNum];
-  var curScore = existing ? existing.score : '';
-  var curMax   = existing ? existing.max : (maxScore || '');
   var curFb    = existing ? existing.feedback : '';
 
-  // Build answers preview
+  // Get student answers
+  var comp = S.completed[gradeKey];
+  var taskAns = comp && comp.answers && comp.answers['t'+taskNum];
+  var ex = S.exams[examCode];
+  var taskDef = ex && ex.tasks && ex.tasks[taskNum-1];
+  var isWriting = taskDef && (taskDef.type==='essay'||taskDef.type==='writing');
+
+  // Auto-grade from answer key
+  var autoScore = 0;
+  var qCount = 0;
   var ansHtml = '';
-  var compK = studentEmail + '|' + examCode;
-  var comp3 = S.completed[compK];
-  var taskAns = comp3 && comp3.answers && comp3.answers['t'+taskNum];
-  var ex3 = S.exams[examCode];
-  var taskDef3 = ex3 && ex3.tasks && ex3.tasks[taskNum-1];
-  var isWriting3 = taskDef3 && (taskDef3.type==='essay'||taskDef3.type==='writing');
-  if(isWriting3){
-    var wText = (comp3&&comp3.answers&&comp3.answers['t'+taskNum])||'';
-    ansHtml = '<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px;">Student Response</div>'
+
+  if (isWriting) {
+    var wText = (comp&&comp.answers&&comp.answers['t'+taskNum])||'';
+    ansHtml = '<div style="margin-bottom:14px;">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:6px;">Student Response</div>'
       +'<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto;">'
       +(wText||'<span style="color:var(--gray-400);">No response</span>')+'</div></div>';
-  } else if(taskAns&&typeof taskAns==='object'){
-    // Determine total question count for this task
-    var _qcount5 = 0;
-    if (taskDef3 && taskDef3.qcount) _qcount5 = taskDef3.qcount;
-    else if (taskDef3 && taskDef3.qs) _qcount5 = taskDef3.qs.length;
-    else { var _answered5 = Object.keys(taskAns).map(Number).filter(function(x){return !isNaN(x);}); if(_answered5.length) _qcount5 = Math.max.apply(null,_answered5); }
-    if (_qcount5 > 0) {
-      ansHtml='<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px;">Student Answers</div>'
-        +'<div style="display:flex;flex-wrap:wrap;gap:5px;">';
-      for(var qi3=1;qi3<=_qcount5;qi3++){
-        var ans3 = taskAns[qi3];
-        var isBlank3 = ans3===undefined||ans3===null||ans3==='';
-        ansHtml+='<div style="background:'+(isBlank3?'#fff0f0':'var(--gray-100)')+';border-radius:6px;padding:3px 8px;font-size:12px;font-family:monospace;'+(isBlank3?'color:#c00;':'')+';">'
-          +'<span style="color:var(--gray-500);">'+qi3+'.</span> <strong>'+(isBlank3?'&mdash;':ans3)+'</strong></div>';
-      }
-      ansHtml+='</div></div>';
+    // Writing - manual grade
+    var curScore = existing ? existing.score : '';
+    var curMax   = existing ? existing.max : (maxScore || 16);
+    ansHtml += '<div style="display:flex;gap:10px;margin-bottom:10px;">'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Score</label>'
+      +'<input type="number" id="tg-score" value="'+curScore+'" min="0" max="'+(maxScore||16)+'" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Out of</label>'
+      +'<input type="number" id="tg-max" value="'+(maxScore||curMax)+'" min="1" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'</div>';
+  } else if (taskAns && typeof taskAns === 'object') {
+    // Determine question count
+    var qcnt = 0;
+    if (taskDef && taskDef.qs) qcnt = taskDef.qs.length;
+    else if (taskDef && taskDef.qcount) qcnt = taskDef.qcount;
+    else { var ks=Object.keys(taskAns).map(Number).filter(function(x){return !isNaN(x);}); if(ks.length) qcnt=Math.max.apply(null,ks); }
+
+    // Check against answer key
+    var hasAK = false;
+    for (var qi2=1;qi2<=qcnt;qi2++) {
+      var akKey2 = 't'+taskNum+'_q'+qi2;
+      if (S.answerKey && S.answerKey[akKey2]) { hasAK = true; break; }
     }
+
+    ansHtml = '<div style="margin-bottom:14px;">';
+    ansHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    ansHtml += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);">Student Answers</div>';
+    if (!hasAK) ansHtml += '<div style="font-size:11px;color:#f59e0b;font-weight:600;">No answer key set — score manually below</div>';
+    ansHtml += '</div>';
+    ansHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+
+    for (var qi3=1;qi3<=qcnt;qi3++) {
+      var stuAns = taskAns[qi3];
+      var isBlank = stuAns===undefined||stuAns===null||stuAns==='';
+      var correctAns = S.answerKey && S.answerKey['t'+taskNum+'_q'+qi3];
+      var isCorrect = !isBlank && correctAns && stuAns===correctAns;
+      var isWrong = !isBlank && correctAns && stuAns!==correctAns;
+      qCount++;
+      if (isCorrect) autoScore++;
+
+      var bg = isBlank ? '#fff0f0' : isCorrect ? '#e8f5e9' : isWrong ? '#fff0f0' : 'var(--gray-100)';
+      var col = isBlank ? '#c00' : isCorrect ? '#2e7d32' : isWrong ? '#c62828' : 'var(--charcoal)';
+      var icon = isCorrect ? ' ✓' : isWrong ? ' ✗' : '';
+
+      ansHtml += '<div style="background:'+bg+';border-radius:8px;padding:5px 10px;font-size:12px;font-family:monospace;color:'+col+';border:1px solid '+(isCorrect?'#a5d6a7':isWrong?'#ef9a9a':'var(--gray-200)')+';">';
+      ansHtml += '<span style="color:var(--gray-500);">'+qi3+'.</span> <strong>'+(isBlank?'—':stuAns)+'</strong>'+icon;
+      if (isWrong && correctAns) ansHtml += ' <span style="font-size:10px;color:#2e7d32;">('+correctAns+')</span>';
+      ansHtml += '</div>';
+    }
+    ansHtml += '</div>';
+    if (hasAK && qCount > 0) {
+      ansHtml += '<div style="margin-top:10px;padding:10px;background:'+(autoScore===qCount?'#e8f5e9':'var(--gray-50)')+';border-radius:8px;font-size:13px;font-weight:600;color:'+(autoScore===qCount?'#2e7d32':'var(--charcoal)')+';">Auto score: '+autoScore+' / '+qCount+'</div>';
+    }
+    ansHtml += '</div>';
+
+    // Score inputs pre-filled with auto score
+    var finalScore = existing ? existing.score : (hasAK ? autoScore : '');
+    var finalMax   = existing ? existing.max   : (qCount || maxScore || 0);
+    ansHtml += '<div style="display:flex;gap:10px;margin-bottom:10px;">'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Score</label>'
+      +'<input type="number" id="tg-score" value="'+finalScore+'" min="0" max="'+(finalMax||qCount||maxScore||100)+'" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Out of</label>'
+      +'<input type="number" id="tg-max" value="'+(finalMax||qCount||maxScore||0)+'" min="1" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'</div>';
+  } else {
+    ansHtml = '<div style="color:var(--gray-400);font-size:13px;margin-bottom:14px;">No answers submitted for this task.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:10px;">'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Score</label>'
+      +'<input type="number" id="tg-score" value="" min="0" max="'+(maxScore||100)+'" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Out of</label>'
+      +'<input type="number" id="tg-max" value="'+(maxScore||0)+'" min="1" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
+      +'</div>';
   }
 
-  body.innerHTML = '<div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;">Student: <strong>' + studentEmail + '</strong><br>Exam: <strong>' + examCode + '</strong></div>'
+  body.innerHTML = '<div style="font-size:12px;color:var(--gray-500);margin-bottom:14px;">Exam: <strong>'+examCode+'</strong></div>'
     + ansHtml
-    + '<div style="display:flex;gap:10px;margin-bottom:10px;">'
-    + '<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Score</label>'
-    + '<input type="number" id="tg-score" value="' + curScore + '" min="0" max="' + (maxScore||100) + '" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
-    + '<div style="flex:1;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Out of</label>'
-    + '<input type="number" id="tg-max" value="' + (maxScore||curMax) + '" min="1" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none;"></div>'
-    + '</div>'
     + '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:4px;">Feedback (optional)</label>'
-    + '<textarea id="tg-feedback" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;">' + curFb + '</textarea>'
-    + '<button class="abtn abtn-pink" style="width:100%;justify-content:center;margin-top:12px;" onclick="doSaveTaskGrade(&quot;' + studentEmail + '&quot;,&quot;' + examCode + '&quot;,' + taskNum + ',' + (maxScore||0) + ')">Save Grade</button>';
+    + '<textarea id="tg-feedback" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;">'+curFb+'</textarea>'
+    + '<button class="abtn abtn-pink" style="width:100%;justify-content:center;margin-top:12px;" onclick="doSaveTaskGrade(&quot;'+studentEmail+'&quot;,&quot;'+examCode+'&quot;,'+taskNum+','+(maxScore||0)+')">Save Grade</button>';
 
   modal.classList.add('open');
 }
-
-function doSaveTaskGrade(studentEmail, examCode, taskNum, defaultMax) {
-  var scoreEl = document.getElementById('tg-score');
-  var maxEl   = document.getElementById('tg-max');
-  var fbEl    = document.getElementById('tg-feedback');
-  if (!scoreEl || !maxEl) return;
-  var score = parseInt(scoreEl.value);
-  var max   = parseInt(maxEl.value) || defaultMax;
-  var fb    = fbEl ? fbEl.value.trim() : '';
-  if (isNaN(score) || score < 0) { showToast('Enter a valid score', ''); return; }
-  if (score > max) { showToast('Score cannot exceed ' + max, ''); return; }
-  saveTaskGrade(studentEmail, examCode, taskNum, score, max, fb);
+async function doSaveTaskGrade(studentEmail, examCode, taskNum, defaultMax) {
+  var scoreEl=document.getElementById('tg-score');
+  var maxEl=document.getElementById('tg-max');
+  var fbEl=document.getElementById('tg-feedback');
+  if (!scoreEl||!maxEl) return;
+  var score=parseInt(scoreEl.value);
+  var max=parseInt(maxEl.value)||defaultMax;
+  var fb=fbEl?fbEl.value.trim():'';
+  if (isNaN(score)||score<0) { showToast('Enter a valid score',''); return; }
+  if (score>max) { showToast('Score cannot exceed '+max,''); return; }
+  await saveTaskGrade(studentEmail, examCode, taskNum, score, max, fb);
   closeOverlay('info-modal');
 }
 
@@ -3682,8 +3889,13 @@ async function loadAllData() {
     var exams = await dbGet('exams');
     S.exams = {}; S.examCodes = {};
     exams.forEach(function(e) {
-      S.exams[e.code] = {title:e.title, code:e.code, duration:e.duration||150, hasAudio:e.has_audio, tasks:e.tasks||[], info:e.info||'', parsedExam:e.parsed_exam||null};
+      S.exams[e.code] = {title:e.title, code:e.code, duration:e.duration||150, hasAudio:e.has_audio, tasks:e.tasks||[], info:e.info||'', parsedExam:e.parsed_exam||null, pts:e.pts||70};
       S.examCodes[e.code] = true;
+      // Load answer key
+      if (e.answer_key && Object.keys(e.answer_key).length) {
+        if (!S.answerKey) S.answerKey = {};
+        Object.assign(S.answerKey, e.answer_key);
+      }
     });
     var examIds = await dbGet('exam_ids');
     S.examIDs = {}; S.usedIDs = {};
@@ -3801,7 +4013,7 @@ function renderSchedTable(){
     var dur=sc.duration||150; var dh=Math.floor(dur/60),dm=dur%60;
     var durStr=(dh>0?dh+'h ':'')+dm+'min';
     var bdg=status==='live'?'<span class="bdg bdg-green">Live</span>':status==='upcoming'?'<span class="bdg bdg-orange">Upcoming</span>':'<span class="bdg" style="background:var(--gray-100);color:var(--gray-600);">Ended</span>';
-    rows+='<tr><td><strong>'+(ex?ex.title:code)+'</strong></td><td><span class="code-tag">'+code+'</span></td><td>'+(sc.date||'-')+'</td><td>'+(sc.time||'-')+'</td><td>'+durStr+'</td><td>'+bdg+'</td><td><button class="abtn abtn-ghost" style="padding:3px 10px;font-size:11px;" onclick="openExamEdit(\'+code+\')">'+(status==='live'?'Manage':'Edit')+'</button></td></tr>';
+    rows+='<tr><td><strong>'+(ex?ex.title:code)+'</strong></td><td><span class="code-tag">'+code+'</span></td><td>'+(sc.date||'-')+'</td><td>'+(sc.time||'-')+'</td><td>'+durStr+'</td><td>'+bdg+'</td><td><button class="abtn abtn-ghost" style="padding:3px 10px;font-size:11px;" onclick="openExamEdit(\'+code+\')">'+(status==='live'?'Manage':status==='ended'?'Renew':'Edit')+'</button></td></tr>';
   });
   tbody.innerHTML=rows;
 }
