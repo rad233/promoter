@@ -3026,7 +3026,13 @@ function buildPreviewContent() {
   if (!body) return;
   if (!S.answerKey) S.answerKey = {};
   var ls = ['A','B','C','D','E','F','G','H'];
+  // Use parsedTasks if available, otherwise fall back to TASKS
   var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1; }).sort(function(a,b){return a-b;});
+  // Make sure TASKS has latest data from parsedExam
+  if (S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
+    applyParsedExam(S.parsedExam, '');
+    taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
+  }
 
   var h = '<div style="padding:20px;">';
   h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">';
