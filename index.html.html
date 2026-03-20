@@ -3182,7 +3182,12 @@ function buildPreviewContent() {
         h += '</div>';
       }
       var dl2=tk2.dialogue||[]; var dlGaps=0;
-      for (var dgi=0;dgi<dl2.length;dgi++) { if(dl2[dgi].indexOf('...(')!==-1) dlGaps++; }
+      for (var dgi=0;dgi<dl2.length;dgi++) {
+        var dline=dl2[dgi]||'';
+        if(dline.indexOf('...(')!==-1||dline.indexOf('(1)')!==-1||dline.indexOf('(2)')!==-1||/\(\d+\)/.test(dline)) dlGaps++;
+      }
+      // Also use question_count as fallback if no gaps detected in dialogue
+      if (dlGaps===0 && tk2.qcount) dlGaps=tk2.qcount;
       if (dlGaps>0) {
         h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-top:12px;margin-bottom:8px;">Answer Key (per gap)</div>';
         h += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
