@@ -3096,6 +3096,9 @@ function buildPreviewContent() {
       }
     }
     // Match passages editing
+    if (tk2.type==='match') {
+      console.log('Match task '+tn2+' passages:', JSON.stringify(tk2.passages), 'keys:', Object.keys(tk2.passages||{}).length);
+    }
     if (tk2.type==='match' && tk2.passages && Object.keys(tk2.passages).length) {
       h += '<div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:8px;">Paragraphs</label>';
       var pkk=Object.keys(tk2.passages);
