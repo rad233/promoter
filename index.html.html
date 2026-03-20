@@ -3073,7 +3073,6 @@ function buildPreviewContent() {
       }
       h += '</div>';
     }
-    }
 
     // MCQ tasks (listening, reading, match)
     if (tk2.qs && tk2.qs.length && !isEssay2) {
@@ -3211,7 +3210,7 @@ function buildPreviewContent() {
     }
 
     h += '</div>';
-  
+  } // end for loop
 
   h += '<button onclick="previewSaveEdits()" class="abtn abtn-pink" style="width:100%;justify-content:center;margin-top:8px;padding:14px;">Save All Changes &amp; Close</button>';
   h += '</div>';
