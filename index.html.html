@@ -1582,44 +1582,7 @@ function gotoTask(n){
 }
 
 
-var TASKS={
-  1:{title:'Task 1',pts:8,type:'listening',opts:['A','B','C','D'],qs:[
-    {q:"The speaker mentions that Beethoven's 9th symphony is performed in",os:["the Candie Gardens.","Castle Cornet.","the museum.","the concert hall."]},
-    {q:"What is Hauteville House known for?",os:["It has an excellent cafe.","There is a coffee shop there.","It is next to a famous harbour.","It was the home of a famous writer."]},
-    {q:"What does the speaker say about the guided walk?",os:["It is offered around the capital.","It starts late in the evening.","It lasts about three hours.","It does not cost anything."]},
-    {q:"What do tourists like most in St Peter Port?",os:["The canal.","The beaches.","The pointed cliffs.","The birds."]},
-    {q:"What is Tennerfest?",os:["Food festival.","Sports festival.","Ancient festival.","Musical festival."]},
-    {q:"What is true about Tennerfest?",os:["All restaurants take part in it.","Everything costs ten pounds.","It lasts for two months.","It has started recently."]},
-    {q:"The speaker says that Tennerfest",os:["is happening now.","has just finished.","will start soon.","ended two weeks ago."]},
-    {q:"At the end the speaker says the Atlantic Hotel offers the ten-pound menu",os:["all day long.","in the morning.","in the evening.","from twelve to two."]}
-  ]},
-  2:{title:'Task 2',pts:8,type:'match',opts:['A','B','C','D','E','F'],qs:[
-    {q:"states what the dove symbolised in Christian art"},
-    {q:"names the tragic case connected to the creation of a certain peace symbol"},
-    {q:"mentions the symbol which linked gods with people"},
-    {q:"states that some nations greet each other with a word expressing peace"},
-    {q:"specifies the reason why a particular symbol is not used in a certain religion"},
-    {q:"names a symbol widely used by a certain group in the 20th century"},
-    {q:"could have the title: A preferred peace symbol for the flags"},
-    {q:"could have the title: A peace symbol created by a famous person"}
-  ],passages:{A:"The notion of peace is important in cultures all over the world...",B:"The dove has been a symbol of peace and innocence for thousands of years...",C:"No one knows for sure when or why the olive tree began to symbolise peace...",D:"Mistletoe was sacred in many cultures representing peace and love...",E:"The rainbow is another ancient and universal symbol...",F:"The ankh, an ancient symbol like a cross with an oval shape at the top..."}},
-  3:{title:'Task 3',pts:8,type:'reading',opts:['A','B','C','D'],qs:[
-    {q:"What was the author's main interest when she signed her first book contract?",os:["To attract readers.","To gain popularity.","To have some income.","To appear in a Netflix series."]},
-    {q:"What was the author most afraid to lose?",os:["Her kids.","The home.","The income.","Government assistance."]},
-    {q:"The author was working as a house cleaner with the aim to",os:["fund her education.","buy food for her children.","become a well-known writer.","gain some experience as a writer."]},
-    {q:"How did the author feel when she received an advanced payment?",os:["Proud.","Nervous.","Annoyed.","Surprised."]},
-    {q:"When the popularity came to the author, she",os:["knew she deserved the fame.","knew people would thank her.","had never expected this would happen.","believed this happened because she worked hard."]},
-    {q:"The author's opinion is that what brought her most fame is her",os:["first book.","struggle for a better life.","shy and introverted personality.","participation in Netflix series."]},
-    {q:"We learn about the author's children that they",os:["feel sorry for those in need.","never watch Netflix series.","have never kept pets at home.","think their mother deserves more."]},
-    {q:"Which would be the best title for the story?",os:["How to get popular","How to gain friends","Once a maid, always a maid","From poverty to success"]}
-  ]},
-  4:{title:'Task 4',pts:12,type:'gapfill4',qcount:14,opts:['A','B','C','D','E','F','G','H','I','J','K','L','M','N'],wordBank:{A:'accompanied',B:'became',C:'campaign',D:'end',E:'interesting',F:'master',G:'named',H:'ordered',I:'organise',J:'realised',K:'refused',L:'tells',M:'train',N:'years'},text:'Nelson Mandela is one of the most inspiring leaders in history. He ......(1) in prison for 27 ......(2) before becoming president of South Africa. The story of his life ......(3) us how one person can change the world. As a young man, Mandela decided to ......(4) as a lawyer so he could help his people. He soon ......(5) that his country needed to change. He helped ......(6) a freedom ......(7) against the apartheid government. The government ......(8) him to leave the country, but he ......(9) . He was then arrested and sent to prison. While in prison, he continued to be an ......(10) figure. When he was finally freed, he did not seek revenge. Instead, he worked to bring the country together. He ......(11) the first black president of South Africa in 1994. The story of Nelson Mandela ......(12) an ......(13) example of forgiveness. He was ......(14) \'Madiba\' by his people, a name of great respect.'},
-  5:{title:'Task 5',pts:12,type:'gapfill5',qcount:12,opts:['A','B','C','D'],text:'Social media has changed the way people communicate. ......(1) some people believe it brings us closer together, others argue that it creates loneliness. Young people spend hours scrolling ......(2) their phones every day. Many experts worry that this is not healthy. They point ......(3) that teenagers who use social media heavily often feel more anxious. However, social media also has many positive uses. ......(4) example, charities use it to raise money ......(5) important causes. People can stay in touch with friends and family who live far away. ......(6) the pandemic, social media was ......(7) important tool for many people. ......(8) the same time, we must be careful about ......(9) information spreading online. Not everything we read is true. It is important to check the source of any news story ......(10) sharing it. ......(11) uses social media wisely can benefit greatly ......(12) its many advantages.',wordChoices:[["while","as","whereas","because"],["out","in","up","through"],["until","so","as","but"],["for","of","since","till"],["an","the","a","that"],["when","at","during","since"],["and","because","but","that"],["during","for","of","in"],["on","of","for","inside"],["against","despite","in spite","although"],["when","whose","who","how"],["out","of","up","in"]]},
-  6:{title:'Task 6',pts:6,type:'dialogue',opts:['A','B','C','D','E','F','G','H'],
-    dialogue:["Student: Excuse me, professor. Would it be possible to arrange a meeting?","Professor: ...(1)","Student: Do you mean the one on the second floor of the main building?","Professor: ...(2)","Student: I will definitely keep you informed.","Professor: ...(3)","Student: I had some personal problems that led to missing two lectures.","Professor: ...(4)","Student: I did go through them but I would still appreciate some clarification.","Professor: ...(5)","Student: Does this mean I cannot submit my project this week?","Professor: ...(6)","Student: Excellent! Thank you so much."],
-    dialogueSents:{A:"It's a pity you couldn't meet the project deadline on time.",B:"Well, I'll be giving the same lecture for group B on Wednesday.",C:"Let me check my schedule. How about Friday at 3 pm?",D:"Sure, I have some free time this Friday noon.",E:"The deadline for submitting late projects is at the end of next week.",F:"Can you check with other students about the online resources I recommended?",G:"Really? What is it that you couldn't quite understand?",H:"Please don't forget to give me a call if you need to reschedule."}},
-  7:{title:'Task 7',pts:16,type:'essay'},
-};
+var TASKS = {};
 
 function renderTask(n){
   var main=document.getElementById('exam-main');
@@ -2143,10 +2106,8 @@ function parsePdfWithAI(b64,fname,progInt,progEl){
 
 
 function applyParsedExam(parsed, fname) {
-  if (fname !== '') { // only update parsedExam when called from actual parse, not from preview rebuild
-    S.parsedExam   = parsed;
-    S.parsedTasks  = parsed.tasks || [];
-  }
+  S.parsedExam  = parsed;
+  S.parsedTasks = parsed.tasks || [];
   // Clear TASKS and rebuild from parsed data
   var oldTaskKeys = Object.keys(TASKS);
   for (var oki=0; oki<oldTaskKeys.length; oki++) delete TASKS[oldTaskKeys[oki]];
@@ -3032,9 +2993,9 @@ function buildPreviewContent() {
   if (!S.answerKey) S.answerKey = {};
   var ls = ['A','B','C','D','E','F','G','H'];
   var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
-  // If no parsed tasks in TASKS, apply from parsedExam
+  // If TASKS is empty but we have parsedExam, apply it first
   if (!taskKeys.length && S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
-    applyParsedExam(S.parsedExam, '');
+    applyParsedExam(S.parsedExam, S.parsedExam.introText || 'exam');
     taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
   }
 
