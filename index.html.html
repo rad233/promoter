@@ -2088,6 +2088,11 @@ function parsePdfWithAI(b64,fname,progInt,progEl){
         text = text.slice(jsonStart, jsonEnd+1);
         var parsed = JSON.parse(text);
         if (!parsed.tasks || !parsed.tasks.length) throw new Error('No tasks found');
+        // Log each task structure to debug
+        for (var dbi=0; dbi<parsed.tasks.length; dbi++) {
+          var dbt = parsed.tasks[dbi];
+          console.log('TASK '+dbt.task+' ('+dbt.type+'): questions='+(dbt.questions?dbt.questions.length:0)+' options='+(dbt.options?dbt.options.length:0)+' passages='+JSON.stringify(Object.keys(dbt.passages||{}))+' dialogue='+(dbt.dialogue?dbt.dialogue.length:0)+' choices='+(dbt.choices?dbt.choices.length:0)+' wordbank='+JSON.stringify(Object.keys(dbt.word_bank||{})));
+        }
         applyParsedExam(parsed, fname);
       }catch(err){
         console.error('Parse error:', err);
@@ -2993,7 +2998,11 @@ function buildPreviewContent() {
   if (!S.answerKey) S.answerKey = {};
   var ls = ['A','B','C','D','E','F','G','H'];
   var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
-  // If TASKS is empty but we have parsedExam, apply it first
+  console.log('buildPreviewContent taskKeys:', taskKeys);
+  for (var dbi2=0; dbi2<taskKeys.length; dbi2++) {
+    var dbt2 = TASKS[taskKeys[dbi2]];
+    console.log('TASKS['+taskKeys[dbi2]+']: type='+dbt2.type+' qs='+(dbt2.qs?dbt2.qs.length:'none')+' passages='+JSON.stringify(Object.keys(dbt2.passages||{}))+' dialogue='+(dbt2.dialogue?dbt2.dialogue.length:'none')+' wordBank='+JSON.stringify(Object.keys(dbt2.wordBank||{})));
+  }
   if (!taskKeys.length && S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
     applyParsedExam(S.parsedExam, S.parsedExam.introText || 'exam');
     taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
