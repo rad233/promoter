@@ -2143,8 +2143,13 @@ function parsePdfWithAI(b64,fname,progInt,progEl){
 
 
 function applyParsedExam(parsed, fname) {
-  S.parsedExam   = parsed;
-  S.parsedTasks  = parsed.tasks || [];
+  if (fname !== '') { // only update parsedExam when called from actual parse, not from preview rebuild
+    S.parsedExam   = parsed;
+    S.parsedTasks  = parsed.tasks || [];
+  }
+  // Clear TASKS and rebuild from parsed data
+  var oldTaskKeys = Object.keys(TASKS);
+  for (var oki=0; oki<oldTaskKeys.length; oki++) delete TASKS[oldTaskKeys[oki]];
 
   // Rebuild TASKS from parsed data so renderTask uses real content
   if (parsed.tasks) {
@@ -3026,10 +3031,9 @@ function buildPreviewContent() {
   if (!body) return;
   if (!S.answerKey) S.answerKey = {};
   var ls = ['A','B','C','D','E','F','G','H'];
-  // Use parsedTasks if available, otherwise fall back to TASKS
-  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1; }).sort(function(a,b){return a-b;});
-  // Make sure TASKS has latest data from parsedExam
-  if (S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
+  var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
+  // If no parsed tasks in TASKS, apply from parsedExam
+  if (!taskKeys.length && S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
     applyParsedExam(S.parsedExam, '');
     taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
   }
@@ -3165,6 +3169,10 @@ function buildPreviewContent() {
       h += '</div>';
     }
 
+    // Gapfill4: show word bank entries clearly
+    if (tk2.type==='gapfill4' && tk2.wordBank && !Object.keys(tk2.wordBank).length) {
+      h += '<div style="background:#fff3e0;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:10px;">Word bank appears empty — the article text above contains the gaps.</div>';
+    }
     // Gapfill5: choices + answer key
     if (tk2.type==='gapfill5' && tk2.wordChoices && tk2.wordChoices.length) {
       h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Gap Choices &amp; Answer Key</div>';
@@ -3183,7 +3191,18 @@ function buildPreviewContent() {
       }
     }
 
-    // Dialogue: sentences + answer key dropdowns
+    // Dialogue: show dialogue lines + sentences + answer key
+    if (tk2.type==='dialogue') {
+      // Show dialogue lines
+      if (tk2.dialogue && tk2.dialogue.length) {
+        h += '<div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:8px;">Dialogue</label>';
+        h += '<div style="background:var(--gray-50);border-radius:8px;padding:12px;">';
+        for (var dli=0;dli<tk2.dialogue.length;dli++) {
+          h += '<div style="font-size:13px;margin:4px 0;padding:4px 0;border-bottom:1px solid var(--gray-100);">'+escapeAttr(tk2.dialogue[dli]||'')+'</div>';
+        }
+        h += '</div></div>';
+      }
+    }
     if (tk2.type==='dialogue' && tk2.dialogueSents) {
       var dsk2=Object.keys(tk2.dialogueSents);
       h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px;">Sentences</div>';
