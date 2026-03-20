@@ -45,63 +45,61 @@ export default async function handler(req, res) {
     }
 
     function cleanAndParse(raw) {
-      raw = raw.replace(/```json|```/g, '').trim();
+      raw = (raw || '').replace(/```json|```/g, '').trim();
       const js = raw.indexOf('{');
       const je = raw.lastIndexOf('}');
       if (js === -1 || je === -1) throw new Error('No JSON found');
       return JSON.parse(raw.slice(js, je + 1));
     }
 
-    // ── Call 1: Intro + task metadata + questions/options (no long texts) ─────
-    const prompt1 = `Parse this exam PDF. Return ONLY valid JSON. DO NOT include article texts or passages in this response - only extract questions and short content.
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // ── Call 1: Structure (questions, options, dialogue, word bank) ───────────
+    const prompt1 = `Parse this exam PDF. Return ONLY valid JSON. Extract questions and structure but leave article texts empty for now:
 {
   "hasIntro": true,
   "introText": "full intro page text",
   "tasks": [
-    {"task":1,"type":"listening","points":8,"question_count":8,"instructions":"instruction text","questions":["q1","q2"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},
-    {"task":2,"type":"match","points":8,"question_count":8,"instructions":"instruction text","questions":["statement1","statement2"],"passages":{"A":"paragraph A","B":"paragraph B","C":"paragraph C","D":"paragraph D","E":"paragraph E","F":"paragraph F"}},
+    {"task":1,"type":"listening","points":8,"question_count":8,"instructions":"instruction text","questions":["q1"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},
+    {"task":2,"type":"match","points":8,"question_count":8,"instructions":"instruction text","questions":["statement1"],"passages":{"A":"full paragraph A","B":"full paragraph B","C":"paragraph C","D":"paragraph D","E":"paragraph E","F":"paragraph F"}},
     {"task":3,"type":"reading","points":8,"question_count":8,"instructions":"instruction text","text":"","questions":["q1"],"options":[["A. opt","B. opt","C. opt","D. opt"]]},
-    {"task":4,"type":"gapfill4","points":12,"question_count":12,"instructions":"instruction text","text":"","word_bank":{"A":"word","B":"word","C":"word"}},
+    {"task":4,"type":"gapfill4","points":12,"question_count":12,"instructions":"instruction text","text":"","word_bank":{"A":"word","B":"word"}},
     {"task":5,"type":"gapfill5","points":12,"question_count":12,"instructions":"instruction text","text":"","choices":[["A. word","B. word","C. word","D. word"]]},
     {"task":6,"type":"dialogue","points":6,"question_count":6,"instructions":"instruction text","dialogue":["Speaker: line","Speaker: ...(1)"],"options":{"A":"sentence","B":"sentence"}},
     {"task":7,"type":"essay","points":16,"instructions":"instruction text","prompt":"essay question"}
   ]
 }
-RULES: Preserve Georgian text. Extract all tasks. Leave "text" field empty for reading/gapfill tasks - we will fetch those separately. Detect task type from content.`;
+RULES: Preserve Georgian text exactly. Extract ALL tasks. Include full match paragraphs. Leave text field empty for reading/gapfill. Detect task type from content.`;
 
-    // ── Call 2: Long texts only (reading passage, gapfill articles) ───────────
-    const prompt2 = `From this exam PDF, extract ONLY the long article/passage texts for each task. Return ONLY valid JSON:
+    const raw1 = await callGemini(prompt1);
+    const parsed1 = cleanAndParse(raw1);
+
+    // ── Wait 3 seconds between calls to avoid rate limit ─────────────────────
+    await sleep(3000);
+
+    // ── Call 2: Long texts only (reading passage + gapfill articles) ─────────
+    const prompt2 = `From this exam PDF extract ONLY the long article/passage texts. Return ONLY valid JSON:
 {
   "texts": {
-    "task3": "COMPLETE reading passage word for word",
-    "task4": "COMPLETE article text with gap markers as ......(1) ......(2) etc at exact positions",
-    "task5": "COMPLETE article text with gap markers as ......(1) ......(2) etc at exact positions"
+    "task3": "COMPLETE reading passage word for word - mandatory, do not leave empty",
+    "task4": "COMPLETE article with gap markers ......(1) ......(2) etc at exact positions - mandatory",
+    "task5": "COMPLETE article with gap markers ......(1) ......(2) etc - mandatory"
   }
 }
-RULES: Copy text EXACTLY word for word. Do not summarize. Preserve Georgian text exactly. Include gap markers at their exact positions for gapfill tasks.`;
+Copy text EXACTLY. Preserve Georgian. Include gap markers at exact positions.`;
 
-    // Run both calls in parallel
-    const [raw1, raw2] = await Promise.all([
-      callGemini(prompt1),
-      callGemini(prompt2)
-    ]);
-
-    const parsed1 = cleanAndParse(raw1);
+    const raw2 = await callGemini(prompt2);
     let parsed2;
-    try {
-      parsed2 = cleanAndParse(raw2);
-    } catch(e) {
-      parsed2 = { texts: {} };
-    }
+    try { parsed2 = cleanAndParse(raw2); } catch(e) { parsed2 = { texts: {} }; }
 
-    // Merge texts into the main result
+    // ── Merge texts into main result ─────────────────────────────────────────
     if (parsed2.texts && parsed1.tasks) {
       for (let i = 0; i < parsed1.tasks.length; i++) {
         const t = parsed1.tasks[i];
         const key = 'task' + t.task;
-        if (parsed2.texts[key]) {
-          t.text = parsed2.texts[key];
-        }
+        if (parsed2.texts[key]) t.text = parsed2.texts[key];
       }
     }
 
