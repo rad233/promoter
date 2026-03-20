@@ -38,7 +38,8 @@ export default async function handler(req, res) {
           }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 65536
+            maxOutputTokens: 65536,
+            response_mime_type: 'application/json'
           }
         })
       }
@@ -51,7 +52,13 @@ export default async function handler(req, res) {
       return;
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    if (finishReason === 'MAX_TOKENS') {
+      res.status(500).json({ error: 'Response too long — try a shorter exam PDF.' });
+      return;
+    }
+    const text = candidate?.content?.parts?.[0]?.text || '';
     res.status(200).json({ text });
 
   } catch (err) {
