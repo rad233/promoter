@@ -647,16 +647,16 @@ tbody tr:hover{background:var(--gray-50);}
     <div class="admin-main">
       <div id="sec-dashboard" class="asec active">
         <div class="asec-title">Dashboard</div>
-        <div class="stats-row">
-          <div class="stat-c" onclick="openStatModal('students')"><div class="sl">Students</div><div class="sv">24</div><div class="ss">4 pending</div></div>
-          <div class="stat-c" onclick="openStatModal('scheduled')"><div class="sl">Scheduled</div><div class="sv">2</div><div class="ss">1 live now</div></div>
-          <div class="stat-c" onclick="openStatModal('essays')"><div class="sl">Essays to grade</div><div class="sv" style="color:var(--pink);">7</div><div class="ss">From last exam</div></div>
-          <div class="stat-c" onclick="openStatModal('avgscore')"><div class="sl">Avg Score</div><div class="sv">58<span style="font-size:16px;">/70</span></div><div class="ss">Last exam</div></div>
+        <div class="stats-row" id="admin-stats-row">
+          <div class="stat-c" onclick="showSec('students')"><div class="sl">Students</div><div class="sv" id="stat-students">0</div><div class="ss" id="stat-students-sub">0 pending</div></div>
+          <div class="stat-c" onclick="showSec('schedule')"><div class="sl">Scheduled</div><div class="sv" id="stat-scheduled">0</div><div class="ss" id="stat-scheduled-sub">0 live</div></div>
+          <div class="stat-c" onclick="showSec('tasks')"><div class="sl">Essays to grade</div><div class="sv" id="stat-essays" style="color:var(--pink);">0</div><div class="ss">Ungraded</div></div>
+          <div class="stat-c" onclick="showSec('results')"><div class="sl">Submissions</div><div class="sv" id="stat-submissions">0</div><div class="ss" id="stat-submissions-sub">total</div></div>
         </div>
-        <div class="acard"><div class="acard-title"> Live &mdash; Version 2</div>
-          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;">
-            <span><strong>21</strong> joined</span><span><strong>3</strong> not joined</span><span><strong>0</strong> submitted</span>
-            <span>Remaining: <strong id="admin-cd">1:47:33</strong></span>
+        <div class="acard" id="admin-live-card" style="display:none;">
+          <div class="acard-title" id="admin-live-title"> Live Exam</div>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;" id="admin-live-info">
+            <span>Remaining: <strong id="admin-cd">—</strong></span>
           </div>
         </div>
         <div class="acard"><div class="acard-title"> Quick Actions</div>
@@ -1556,12 +1556,20 @@ function startExam(isReEntry){
   }
   clearInterval(S.timerInt);
   if (S.timeLeft <= 0) { showTimesUp(); return; }
+  // Save initial timer state to Supabase
+  if (S.activeExamCode) {
+    dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:false, started_at:Date.now()},'exam_code');
+  }
   S.timerInt=setInterval(function(){
     S.timeLeft--;
     if(S.timeLeft<=0){clearInterval(S.timerInt);showTimesUp();return;}
     var h=Math.floor(S.timeLeft/3600),m=Math.floor((S.timeLeft%3600)/60),s=S.timeLeft%60;
     var el=document.getElementById('exam-timer');
     if(el){el.textContent=h+':'+pad(m)+':'+pad(s);el.className='exam-timer'+(S.timeLeft<600?' danger':S.timeLeft<1800?' warn':'');}
+    // Sync to Supabase every 30 seconds
+    if (S.timeLeft % 30 === 0 && S.activeExamCode) {
+      dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:false, started_at:Date.now()},'exam_code');
+    }
   },1000);
   if(window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   if(S.pdfFile&&window.pdfjsLib){
@@ -2074,7 +2082,6 @@ function parsePdfWithAI(b64,fname,progInt,progEl){
       document.getElementById('pdf-parsing').style.display='none';
       try{
         var text = data.text || '';
-        console.log('RAW GEMINI RESPONSE:', text.substring(0, 2000));
         if (!text && data.error) throw new Error(data.error);
         if (!text) throw new Error('Empty response from AI');
         // Strip markdown code fences
@@ -2091,7 +2098,6 @@ function parsePdfWithAI(b64,fname,progInt,progEl){
         // Log each task structure to debug
         for (var dbi=0; dbi<parsed.tasks.length; dbi++) {
           var dbt = parsed.tasks[dbi];
-          console.log('TASK '+dbt.task+' ('+dbt.type+'): questions='+(dbt.questions?dbt.questions.length:0)+' options='+(dbt.options?dbt.options.length:0)+' passages='+JSON.stringify(Object.keys(dbt.passages||{}))+' dialogue='+(dbt.dialogue?dbt.dialogue.length:0)+' choices='+(dbt.choices?dbt.choices.length:0)+' wordbank='+JSON.stringify(Object.keys(dbt.word_bank||{})));
         }
         applyParsedExam(parsed, fname);
       }catch(err){
@@ -2135,7 +2141,6 @@ function applyParsedExam(parsed, fname) {
         TASKS[tn].opts = t.answer_options || ['A','B','C','D'];
         // Handle various field names Gemini might use for the passage
         var taskText = t.text || t.passage || t.reading_text || t.article || t.content || '';
-        console.log('Task '+tn+' ('+t.type+') text keys:', Object.keys(t), 'textLen:', taskText.length);
         if (taskText) TASKS[tn].text = taskText;
         for (var qi = 0; qi < (t.questions || []).length; qi++) {
           TASKS[tn].qs.push({ q: t.questions[qi], os: (t.options && t.options[qi]) || [] });
@@ -2758,10 +2763,12 @@ function doExamAction() {
         var el = document.getElementById('exam-timer');
         if (el) { el.textContent=h+':'+pad(m)+':'+pad(s); el.className='exam-timer'+(S.timeLeft<600?' danger':S.timeLeft<1800?' warn':''); }
       }, 1000);
+      if (S.activeExamCode) dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:false, started_at:Date.now()},'exam_code');
       showToast('Timer resumed', 'success');
     } else {
       S.timerPaused = true;
       clearInterval(S.timerInt);
+      if (S.activeExamCode) dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:true, started_at:0},'exam_code');
       showToast('Timer paused', '');
     }
     openLiveEditModal(code);
@@ -2998,10 +3005,8 @@ function buildPreviewContent() {
   if (!S.answerKey) S.answerKey = {};
   var ls = ['A','B','C','D','E','F','G','H'];
   var taskKeys = Object.keys(TASKS).map(Number).filter(function(k){ return k >= 1 && TASKS[k] && TASKS[k].type; }).sort(function(a,b){return a-b;});
-  console.log('buildPreviewContent taskKeys:', taskKeys);
   for (var dbi2=0; dbi2<taskKeys.length; dbi2++) {
     var dbt2 = TASKS[taskKeys[dbi2]];
-    console.log('TASKS['+taskKeys[dbi2]+']: type='+dbt2.type+' qs='+(dbt2.qs?dbt2.qs.length:'none')+' passages='+JSON.stringify(Object.keys(dbt2.passages||{}))+' dialogue='+(dbt2.dialogue?dbt2.dialogue.length:'none')+' wordBank='+JSON.stringify(Object.keys(dbt2.wordBank||{})));
   }
   if (!taskKeys.length && S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
     applyParsedExam(S.parsedExam, S.parsedExam.introText || 'exam');
@@ -3097,7 +3102,6 @@ function buildPreviewContent() {
     }
     // Match passages editing
     if (tk2.type==='match') {
-      console.log('Match task '+tn2+' passages:', JSON.stringify(tk2.passages), 'keys:', Object.keys(tk2.passages||{}).length);
     }
     if (tk2.type==='match' && tk2.passages && Object.keys(tk2.passages).length) {
       h += '<div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);display:block;margin-bottom:8px;">Paragraphs</label>';
