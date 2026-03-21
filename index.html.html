@@ -1335,6 +1335,9 @@ function doAdminLogin() {
     refreshCodesTable();
     renderExamList();
     renderSchedTable();
+    updateAdminDashboard();
+    clearInterval(window._dashInt);
+    window._dashInt = setInterval(updateAdminDashboard, 5000);
   } else { err.style.display='block'; }
 }
 
@@ -2500,11 +2503,6 @@ function formatCountdown(dateStr, timeStr, duration) {
 }
 
 window.addEventListener('load', function(){
-  /* Seed built-in schedule/exam entries */
-  if (!S.schedule['EXAM2026-V2']) S.schedule['EXAM2026-V2'] = { date: getTodayStr(), time: '10:00', title: 'English Language — V2', duration: 150 };
-  if (!S.schedule['EXAM2026-V1']) S.schedule['EXAM2026-V1'] = { date: getDateStr(4),  time: '10:00', title: 'English Language — V1', duration: 150 };
-
-
   var overlays=document.querySelectorAll('.overlay');
   for(var i=0;i<overlays.length;i++){
     (function(o){ o.addEventListener('click',function(e){ if(e.target===o) o.classList.remove('open'); }); })(overlays[i]);
@@ -4003,6 +4001,88 @@ async function loadAllData() {
   } catch(e) { console.error('loadAllData error',e); }
   // Refresh student exam list if student is logged in
   if (S.student) renderStudentExams();
+  // Refresh all admin panels if admin is logged in
+  refreshStudentsTable();
+  refreshCodesTable();
+  renderExamList();
+  renderSchedTable();
+  updateAdminDashboard();
+}
+
+function updateAdminDashboard() {
+  // Students
+  var codes = Object.values(S.regCodes||{});
+  var total   = codes.filter(function(u){ return u.activated; }).length;
+  var pending = codes.filter(function(u){ return !u.activated; }).length;
+  var sv  = document.getElementById('stat-students');
+  var ss  = document.getElementById('stat-students-sub');
+  if (sv) sv.textContent = total;
+  if (ss) ss.textContent = pending + ' pending';
+
+  // Scheduled / live
+  var schedKeys = Object.keys(S.schedule||{});
+  var liveCount = 0, scheduledCount = 0, liveCode = null;
+  schedKeys.forEach(function(code) {
+    var sc = S.schedule[code];
+    var st = getExamStatus(sc.date, sc.time, sc.duration);
+    if (st === 'live')     { liveCount++;      liveCode = code; }
+    if (st === 'upcoming') { scheduledCount++; }
+  });
+  var sv2 = document.getElementById('stat-scheduled');
+  var ss2 = document.getElementById('stat-scheduled-sub');
+  if (sv2) sv2.textContent = scheduledCount + liveCount;
+  if (ss2) ss2.textContent = liveCount + ' live';
+
+  // Essays to grade
+  var essayCount = 0;
+  Object.keys(S.completed||{}).forEach(function(ck) {
+    var parts = ck.split('|'); var exCode = parts[1];
+    var ex = S.exams[exCode]; if (!ex||!ex.tasks) return;
+    var grades = S.grades[ck]||{};
+    ex.tasks.forEach(function(t, ti) {
+      if (t.type==='essay'||t.type==='writing') {
+        if (!grades['t'+(ti+1)]) essayCount++;
+      }
+    });
+  });
+  var sv3 = document.getElementById('stat-essays');
+  if (sv3) sv3.textContent = essayCount;
+
+  // Submissions
+  var subCount = Object.keys(S.completed||{}).length;
+  var sv4 = document.getElementById('stat-submissions');
+  var ss4 = document.getElementById('stat-submissions-sub');
+  if (sv4) sv4.textContent = subCount;
+  if (ss4) ss4.textContent = 'total';
+
+  // Live exam card
+  var liveCard  = document.getElementById('admin-live-card');
+  var liveTitle = document.getElementById('admin-live-title');
+  var liveInfo  = document.getElementById('admin-live-info');
+  if (liveCard) {
+    if (liveCode) {
+      liveCard.style.display = 'block';
+      var ex = S.exams[liveCode];
+      if (liveTitle) liveTitle.textContent = ' Live — ' + (ex ? ex.title : liveCode);
+      var sc = S.schedule[liveCode];
+      var startMs = new Date(sc.date + 'T' + sc.time + ':00').getTime();
+      var totalSecs = (sc.duration||150) * 60;
+      var elapsedSecs = Math.floor((Date.now() - startMs) / 1000);
+      var remSecs = Math.max(0, totalSecs - elapsedSecs);
+      var rh = Math.floor(remSecs/3600), rm = Math.floor((remSecs%3600)/60), rs = remSecs%60;
+      var joined = 0, submitted = 0;
+      Object.keys(S.usedIDs||{}).forEach(function(k) { if (k.startsWith(liveCode+':')) joined++; });
+      Object.keys(S.completed||{}).forEach(function(ck) { if (ck.endsWith('|'+liveCode)) submitted++; });
+      var totalIds = (S.examIDs&&S.examIDs[liveCode]) ? S.examIDs[liveCode].length : 0;
+      if (liveInfo) liveInfo.innerHTML =
+        '<span><strong>'+joined+'</strong> joined</span>' +
+        '<span><strong>'+(totalIds-joined)+'</strong> not joined</span>' +
+        '<span><strong>'+submitted+'</strong> submitted</span>' +
+        '<span>Remaining: <strong>'+rh+':'+pad(rm)+':'+pad(rs)+'</strong></span>';
+    } else {
+      liveCard.style.display = 'none';
+    }
+  }
 }
 
 function startRealtimeSubscriptions() {
