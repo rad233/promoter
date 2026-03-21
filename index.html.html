@@ -1564,6 +1564,34 @@ function _runExamTimer(examCode, startTimeLeft) {
     if (S.timeLeft % 20 === 0) {
       dbUpsert('timer_state', {exam_code:examCode, time_left:S.timeLeft, paused:false, started_at:Date.now()}, 'exam_code');
     }
+    // Check Supabase every 5 seconds for admin pause/adjust
+    if (S.timeLeft % 5 === 0) {
+      (function(curLeft){
+        dbGet('timer_state', {exam_code:examCode}).then(function(rows) {
+          if (!rows.length) return;
+          var ts = rows[0];
+          // Admin paused
+          if (ts.paused && !S.timerPaused) {
+            S.timerPaused = true;
+            clearInterval(S.timerInt);
+            showToast('Timer paused by invigilator', '');
+          }
+          // Admin resumed
+          if (!ts.paused && S.timerPaused) {
+            var el2=ts.started_at?Math.floor((Date.now()-ts.started_at)/1000):0;
+            S.timerPaused = false;
+            _runExamTimer(examCode, Math.max(0,(ts.time_left||curLeft)-el2));
+            showToast('Timer resumed by invigilator', 'success');
+          }
+          // Admin adjusted time (difference > 60s)
+          if (!ts.paused && !S.timerPaused) {
+            var el3=ts.started_at?Math.floor((Date.now()-ts.started_at)/1000):0;
+            var adminLeft=Math.max(0,ts.time_left-el3);
+            if (Math.abs(adminLeft-curLeft)>60) { S.timeLeft=adminLeft; }
+          }
+        });
+      })(S.timeLeft);
+    }
   }, 1000);
 }
 
@@ -1809,7 +1837,9 @@ function renderTask(n){
     var gn6=0;
     for(var di6=0;di6<dl6.length;di6++){
       var line6=dl6[di6];
-      if(line6.indexOf('...(')!==-1){
+      // Detect gap: ...(N) or just (N)
+      var _hasGap6 = line6.indexOf('...(')!==-1 || /\(\d+\)/.test(line6);
+      if(_hasGap6){
         gn6++;
         var ca6=S.answers['t'+n]&&S.answers['t'+n][gn6]?S.answers['t'+n][gn6]:'';
         var dd6='<select class="inline-dd" data-tn="'+n+'" data-q="'+gn6+'" onchange="selDD('+n+','+gn6+',this)">';
@@ -1846,18 +1876,25 @@ function renderTask(n){
   h+='</div>';
 
   // Determine last task number dynamically
-  // Use parsedExam task count if available (most reliable)
+  // Determine last task number
   var _lastTask = 7;
   if (S.parsedExam && S.parsedExam.tasks && S.parsedExam.tasks.length) {
     _lastTask = S.parsedExam.tasks.length;
   } else {
-    var _tkeys2 = Object.keys(TASKS).map(Number).filter(function(k){return k>=1 && TASKS[k] && TASKS[k].type;});
-    if (_tkeys2.length) _lastTask = Math.max.apply(null, _tkeys2);
+    var _activeEx2 = S.activeExamCode && S.exams[S.activeExamCode];
+    if (_activeEx2 && _activeEx2.tasks && _activeEx2.tasks.length) {
+      _lastTask = _activeEx2.tasks.length;
+    } else {
+      var _tkeys2 = Object.keys(TASKS).map(Number).filter(function(k){return k>=1 && TASKS[k] && TASKS[k].type;});
+      if (_tkeys2.length) _lastTask = Math.max.apply(null, _tkeys2);
+    }
   }
   h+='<div class="exam-nav-btns">';
   if(n>0) h+='<button class="geo-btn geo-btn-outline" onclick="gotoTask('+(n-1)+')">\u2190 \u10E3\u10D9\u10D0\u10DC \u10D3\u10D0\u10D1\u10E0\u10E3\u10DC\u10D4\u10D1\u10D0</button>';
-  if(n < _lastTask) h+='<button class="geo-btn geo-btn-pink" onclick="gotoTask('+(n+1)+')">\u10E8\u10D4\u10DB\u10D3\u10D4\u10D2\u10D6\u10D4 \u10D2\u10D0\u10D3\u10D0\u10E1\u10D5\u10DA\u10D0 \u2192</button>';
-  else h+='<button class="geo-btn geo-btn-pink" onclick="showSubmitConfirm()">\u10D2\u10D0\u10DB\u10DD\u10EA\u10D3\u10D8\u10E1 \u10D3\u10D0\u10E1\u10E0\u10E3\u10DA\u10D4\u10D1\u10D0 \u2713</button>';
+  // Show submit if this is last task OR if there's no next task defined
+  var _hasNextTask = (n < _lastTask) && TASKS[n+1] && TASKS[n+1].type;
+  if(_hasNextTask) h+='<button class="geo-btn geo-btn-pink" onclick="gotoTask('+(n+1)+')">\u10E8\u10D4\u10DB\u10D3\u10D4\u10D2\u10D6\u10D4 \u10D2\u10D0\u10D3\u10D0\u10E1\u10D5\u10DA\u10D0 \u2192</button>';
+  else h+='<button type="button" class="geo-btn geo-btn-pink" onclick="showSubmitConfirm()">\u10D2\u10D0\u10DB\u10DD\u10EA\u10D3\u10D8\u10E1 \u10D3\u10D0\u10E1\u10E0\u10E3\u10DA\u10D4\u10D1\u10D0 \u2713</button>';
   h+='</div>';
 
   main.innerHTML=h;
@@ -2763,8 +2800,16 @@ function openLiveEditModal(code) {
           t = Math.max(0, (ts.time_left || 0) - elapsed);
         }
       } else {
-        var sc = S.schedule && S.schedule[code];
-        t = sc ? (sc.duration || 150) * 60 : 0;
+        // No timer record yet — calculate from schedule start time
+        var sc2 = S.schedule && S.schedule[code];
+        if (sc2 && sc2.date && sc2.time) {
+          var startMs = new Date(sc2.date + 'T' + sc2.time + ':00').getTime();
+          var totalSecs2 = (sc2.duration || 150) * 60;
+          var elapsedSecs2 = Math.floor((Date.now() - startMs) / 1000);
+          t = Math.max(0, totalSecs2 - elapsedSecs2);
+        } else {
+          t = sc2 ? (sc2.duration || 150) * 60 : 0;
+        }
       }
       var h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
       el.textContent = h+':'+pad(m)+':'+pad(s);
@@ -2843,6 +2888,8 @@ function doExamAction() {
       S.timeLeft = Math.max(10, S.timeLeft - secs);
       showToast('\u2212' + mins + ' min removed from timer', '');
     }
+    // Save to Supabase so student timer updates
+    dbUpsert('timer_state', {exam_code:code, time_left:S.timeLeft, paused:false, started_at:Date.now()}, 'exam_code');
     var h=Math.floor(S.timeLeft/3600), m=Math.floor((S.timeLeft%3600)/60), s=S.timeLeft%60;
     var el = document.getElementById('exam-timer');
     if (el) { el.textContent=h+':'+pad(m)+':'+pad(s); el.className='exam-timer'+(S.timeLeft<600?' danger':S.timeLeft<1800?' warn':''); }
