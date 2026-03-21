@@ -1530,7 +1530,8 @@ async function doUnlock() {
   }
   // Load exam data
   var ex = examRows[0];
-  S.exams[code] = {title:ex.title, code:code, duration:ex.duration||150, tasks:ex.tasks||[], info:ex.info||'', parsedExam:ex.parsed_exam||null, pts:ex.pts||70};
+  S.exams[code] = {title:ex.title, code:code, duration:ex.duration||150, tasks:ex.tasks||[], info:ex.info||'', parsedExam:ex.parsed_exam||null, pts:ex.pts||70, audioURL:ex.audio_url||null};
+  if (ex.audio_url) { S.audioURL = ex.audio_url; window.S_audioURL = ex.audio_url; }
   if (ex.answer_key) { if(!S.answerKey) S.answerKey={}; Object.assign(S.answerKey, ex.answer_key); }
   S.examCodes[code] = true;
   if (ex.parsed_exam) applyParsedExam(ex.parsed_exam, ex.title);
@@ -1692,7 +1693,9 @@ function renderTask(n){
 
   if(task.type==='listening'){
     h+='<p class="task-instr">'+(task.instructions||'Listen and mark the correct answer A, B, C or D.')+'</p>';
-    var _audioSrc = window.S_audioURL || S.audioURL || '';
+    // Get audio URL from exam data or stored URL
+    var _activeExForAudio = S.activeExamCode && S.exams[S.activeExamCode];
+    var _audioSrc = window.S_audioURL || S.audioURL || (_activeExForAudio&&_activeExForAudio.audioURL) || '';
     if (_audioSrc) {
       h+='<audio id="task-audio" src="'+_audioSrc+'" preload="metadata" style="display:none;"></audio>';
       h+='<div class="audio-player">';
@@ -2291,7 +2294,7 @@ async function saveExam(){
 
   // Save exam — strip parsed_exam to reduce payload size if too large
   var parsedExamToSave = S.parsedExam || null;
-  var examRow = {code:upperCode, title:title, duration:duration, info:infoText, has_audio:false, tasks:S.parsedTasks||[], answer_key:S.answerKey||{}, pts:pts};
+  var examRow = {code:upperCode, title:title, duration:duration, info:infoText, has_audio:!!(S.audioURL), tasks:S.parsedTasks||[], answer_key:S.answerKey||{}, pts:pts, audio_url:S.audioURL||null};
   // Try with parsed_exam first, fall back without if it fails
   var ok = await dbUpsert('exams', Object.assign({}, examRow, {parsed_exam:parsedExamToSave}), 'code');
   if (!ok) {
@@ -2301,7 +2304,7 @@ async function saveExam(){
   }
 
   S.examCodes[upperCode]=true;
-  S.exams[upperCode]={title:title, code:upperCode, duration:duration, hasAudio:false, tasks:S.parsedTasks||[], info:infoText, pts:pts};
+  S.exams[upperCode]={title:title, code:upperCode, duration:duration, hasAudio:!!(S.audioURL), tasks:S.parsedTasks||[], info:infoText, pts:pts, audioURL:S.audioURL||null};
 
   if (window._ebGeneratedIDs&&window._ebGeneratedIDs.length) {
     S.examIDs[upperCode]=window._ebGeneratedIDs.slice();
@@ -3508,22 +3511,41 @@ async function scheduleExam(code) {
 }
 
 
-function handleAudioUpload(e) {
+async function handleAudioUpload(e) {
   var file = e.target ? e.target.files[0] : (e.files ? e.files[0] : null);
   if (!file) return;
-  // Revoke old URL if any
-  if (window.S_audioURL) URL.revokeObjectURL(window.S_audioURL);
+  // Revoke old blob URL if any
+  if (window.S_audioURL && window.S_audioURL.startsWith('blob:')) URL.revokeObjectURL(window.S_audioURL);
   window.S_audioFile = file;
-  window.S_audioURL  = URL.createObjectURL(file);
+  // Show local preview immediately
+  window.S_audioURL = URL.createObjectURL(file);
   S.audioURL = window.S_audioURL;
-  // Update the preview player in the builder
   var player = document.getElementById('audio-player');
   if (player) { player.src = window.S_audioURL; player.style.display = 'block'; }
   var nameEl = document.getElementById('audio-name');
-  if (nameEl) nameEl.textContent = file.name;
+  if (nameEl) nameEl.textContent = file.name + ' (uploading...)';
   var preview = document.getElementById('audio-preview');
   if (preview) preview.style.display = 'block';
-  showToast('Audio uploaded: ' + file.name, 'success');
+
+  // Upload to Supabase Storage
+  try {
+    var fileName = 'audio_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    var { data, error } = await sb.storage.from('exam-audio').upload(fileName, file, {upsert:true});
+    if (error) throw error;
+    // Get public URL
+    var { data: urlData } = sb.storage.from('exam-audio').getPublicUrl(fileName);
+    var publicURL = urlData.publicUrl;
+    window.S_audioURL = publicURL;
+    S.audioURL = publicURL;
+    if (player) player.src = publicURL;
+    if (nameEl) nameEl.textContent = file.name + ' ✓';
+    showToast('Audio uploaded: ' + file.name, 'success');
+  } catch(err) {
+    // Fall back to blob URL if upload fails
+    console.error('Audio upload error:', err);
+    if (nameEl) nameEl.textContent = file.name + ' (local only)';
+    showToast('Audio saved locally (storage upload failed)', '');
+  }
 }
 
 function onDrumScroll(col) {
@@ -4075,7 +4097,7 @@ async function loadAllData() {
     var exams = await dbGet('exams');
     S.exams = {}; S.examCodes = {};
     exams.forEach(function(e) {
-      S.exams[e.code] = {title:e.title, code:e.code, duration:e.duration||150, hasAudio:e.has_audio, tasks:e.tasks||[], info:e.info||'', parsedExam:e.parsed_exam||null, pts:e.pts||70};
+      S.exams[e.code] = {title:e.title, code:e.code, duration:e.duration||150, hasAudio:e.has_audio, tasks:e.tasks||[], info:e.info||'', parsedExam:e.parsed_exam||null, pts:e.pts||70, audioURL:e.audio_url||null};
       S.examCodes[e.code] = true;
       // Load answer key
       if (e.answer_key && Object.keys(e.answer_key).length) {
