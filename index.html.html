@@ -1722,7 +1722,8 @@ function renderTask(n){
         var curKey=S.answers['t'+n]&&S.answers['t'+n][gi]?S.answers['t'+n][gi]:null;
         var curWord=curKey&&wb[curKey]?wb[curKey]:null;
         var gapSpan='<span class="gap-drop'+(curWord?' gap-filled':'')+'" id="gap-t'+n+'-'+gi+'" data-tn="'+n+'" data-gn="'+gi+'" ondragover="event.preventDefault()" ondrop="dropOnGap(event,'+n+','+gi+')" onclick="gapTap('+n+','+gi+',this)">'+(curWord||'<span class="gap-arrow">&#9660;</span>')+'</span>';
-        txt=txt.replace('......('+gi+')',gapSpan);
+        if(txt.indexOf('......('+gi+')')!==-1){txt=txt.replace('......('+gi+')',gapSpan);}
+        else{txt=txt.replace('('+gi+')',gapSpan);}
       }
       h+='<div class="gapfill-text reading-box">'+txt+'</div>';
     } else {
@@ -1757,7 +1758,8 @@ function renderTask(n){
           dd5+='<option value="'+String.fromCharCode(65+j5)+'"'+(ca5===String.fromCharCode(65+j5)?' selected':'')+'>'+optlbl5+'</option>';
         }
         dd5+='</select>';
-        txt5=txt5.replace('......('+i5+')',dd5);
+        if(txt5.indexOf('......('+i5+')')!==-1){txt5=txt5.replace('......('+i5+')',dd5);}
+        else{txt5=txt5.replace('('+i5+')',dd5);}
       }
       h+='<div class="gapfill-text reading-box">'+txt5+'</div>';
     } else {
@@ -1799,7 +1801,8 @@ function renderTask(n){
           dd6+='<option value="'+sl6+'"'+(ca6===sl6?' selected':'')+'>'+sl6+'</option>';
         }
         dd6+='</select>';
-        line6=line6.replace('...('+gn6+')',dd6);
+        if(line6.indexOf('...('+gn6+')')!==-1){line6=line6.replace('...('+gn6+')',dd6);}
+        else{line6=line6.replace('('+gn6+')',dd6);}
       }
       h+='<p style="font-size:13px;margin:6px 0;">'+line6+'</p>';
     }
@@ -1813,7 +1816,7 @@ function renderTask(n){
     }
     h+='</div></div>';
   }
-    if(task.type==='essay'){
+    if(task.type==='essay'||task.type==='writing'){
     var _essayInstr = task.instructions || 'Write your response.';
     var _essayPrompt = task.prompt || '';
     var _essayAns = S.answers['t'+n] || '';
@@ -2716,18 +2719,31 @@ function openLiveEditModal(code) {
     + '</div>'
     + '</div>';
   document.getElementById('live-edit-overlay').style.display = 'flex';
-  // Tick the modal timer live (only when not paused)
+  // Tick the modal timer — reads from Supabase every second for real sync
   clearInterval(window._liveModalInt);
-  if (!isPaused) {
-    window._liveModalInt = setInterval(function() {
-      var el = document.getElementById('live-modal-timer');
-      if (!el) { clearInterval(window._liveModalInt); return; }
-      var t = S.timeLeft || 0;
-      var h = Math.floor(t/3600), m = Math.floor((t%3600)/60), s = t%60;
-      el.textContent = h + ':' + pad(m) + ':' + pad(s);
-      el.style.color = t < 600 ? 'var(--pink)' : t < 1800 ? '#ff9800' : '#fff';
-    }, 500);
-  }
+  window._liveModalInt = setInterval(function() {
+    var el = document.getElementById('live-modal-timer');
+    if (!el) { clearInterval(window._liveModalInt); return; }
+    dbGet('timer_state', {exam_code: code}).then(function(rows) {
+      if (!el) return;
+      var t = 0;
+      if (rows.length) {
+        var ts = rows[0];
+        if (ts.paused) {
+          t = ts.time_left || 0;
+        } else {
+          var elapsed = ts.started_at ? Math.floor((Date.now() - ts.started_at) / 1000) : 0;
+          t = Math.max(0, (ts.time_left || 0) - elapsed);
+        }
+      } else {
+        var sc = S.schedule && S.schedule[code];
+        t = sc ? (sc.duration || 150) * 60 : 0;
+      }
+      var h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
+      el.textContent = h+':'+pad(m)+':'+pad(s);
+      el.style.color = t<600?'var(--pink)':t<1800?'#ff9800':'#fff';
+    });
+  }, 1000);
 }
 
 function closeLiveEditModal() {
@@ -2790,7 +2806,7 @@ function doExamAction() {
     } else {
       S.timerPaused = true;
       clearInterval(S.timerInt);
-      if (S.activeExamCode) dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:true, started_at:0},'exam_code');
+      if (S.activeExamCode) dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:true, started_at:0},'exam_code').then(function(){openLiveEditModal&&openLiveEditModal(S.activeExamCode);});
       showToast('Timer paused', '');
     }
     openLiveEditModal(code);
