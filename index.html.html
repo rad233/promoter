@@ -2539,62 +2539,83 @@ function applyTimePreset(val){
 
 function buildEssays(){
   var el=document.getElementById('essay-list'); if(!el) return;
-  var entries=[];
-  var compKeys=Object.keys(S.completed||{});
-  for(var ci=0;ci<compKeys.length;ci++){
-    var ck=compKeys[ci];
-    var pts2=ck.split('|'); var stEmail=pts2[0], exCode=pts2[1];
-    var comp=S.completed[ck];
-    var ex=S.exams[exCode]; if(!ex) continue;
-    var stName='';
-    var rks=Object.keys(S.regCodes);
-    for(var ri=0;ri<rks.length;ri++){if(S.regCodes[rks[ri]].email===stEmail){stName=S.regCodes[rks[ri]].name;break;}}
-    var tasks=ex.tasks||[];
-    var foundWriting=false;
-    for(var ti=0;ti<tasks.length;ti++){
-      if(tasks[ti].type==='essay'||tasks[ti].type==='writing'){
-        foundWriting=true;
-        var taskNum=ti+1;
-        var essayText=(comp.answers&&comp.answers['t'+taskNum])||'';
-        var maxPts=tasks[ti].pts||16; var half=Math.floor(maxPts/2);
-        var gk=stEmail+'|'+exCode;
-        var eg=S.grades[gk]&&S.grades[gk]['wt'+taskNum];
-        entries.push({stEmail:stEmail,stName:stName||stEmail,exCode:exCode,exTitle:ex.title,taskNum:taskNum,essayText:essayText,existing:eg,maxPts:maxPts,half:half,gk:gk,legacy:false});
+  el.innerHTML='<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">Loading...</div>';
+  // Load all submissions fresh from Supabase
+  dbGet('submissions').then(function(subs) {
+    dbGet('grades').then(function(gradeRows) {
+      // Rebuild grades map
+      var gradeMap={};
+      gradeRows.forEach(function(r){
+        var key=r.student_email+'|'+r.exam_code;
+        if(!gradeMap[key]) gradeMap[key]={};
+        var obj={score:r.score,max:r.max_score,feedback:r.feedback||''};
+        if(r.fluency!=null){obj.fluency=r.fluency;obj.accuracy=r.accuracy;}
+        gradeMap[key][r.task_key]=obj;
+        // Also store in S.grades
+        if(!S.grades[key]) S.grades[key]={};
+        S.grades[key][r.task_key]=obj;
+      });
+
+      var entries=[];
+      subs.forEach(function(sub){
+        // Skip autosaves that were never actually submitted
+        if(sub.elapsed_str==='in_progress' && !sub.submitted_at) return;
+        var stEmail=sub.student_email, exCode=sub.exam_code;
+        var ex=S.exams[exCode]; if(!ex) return;
+        var stName='';
+        var rks=Object.keys(S.regCodes);
+        for(var ri=0;ri<rks.length;ri++){if(S.regCodes[rks[ri]].email===stEmail){stName=S.regCodes[rks[ri]].name;break;}}
+        var tasks=ex.tasks||[];
+        var foundWriting=false;
+        for(var ti=0;ti<tasks.length;ti++){
+          if(tasks[ti].type==='essay'||tasks[ti].type==='writing'){
+            foundWriting=true;
+            var taskNum=ti+1;
+            var essayText=(sub.answers&&sub.answers['t'+taskNum])||'';
+            var maxPts=tasks[ti].pts||16; var half=Math.floor(maxPts/2);
+            var gk=stEmail+'|'+exCode;
+            var eg=gradeMap[gk]&&(gradeMap[gk]['t'+taskNum]||gradeMap[gk]['wt'+taskNum]);
+            entries.push({stEmail:stEmail,stName:stName||stEmail,exCode:exCode,exTitle:ex.title,taskNum:taskNum,essayText:essayText,existing:eg,maxPts:maxPts,half:half,gk:gk,legacy:false});
+          }
+        }
+        if(!foundWriting){
+          // Fallback: check t7 answer
+          var essayText2=(sub.answers&&sub.answers['t7'])||'';
+          if(essayText2){
+            var gk2=stEmail+'|'+exCode;
+            var eg2=gradeMap[gk2]&&(gradeMap[gk2]['t7']||gradeMap[gk2]['essay']);
+            entries.push({stEmail:stEmail,stName:stName||stEmail,exCode:exCode,exTitle:ex.title,taskNum:7,essayText:essayText2,existing:eg2,maxPts:16,half:8,gk:gk2,legacy:false});
+          }
+        }
+      });
+
+      if(!entries.length){
+        el.innerHTML='<div class="acard" style="text-align:center;padding:28px;color:var(--gray-400);font-size:13px;">No writing tasks submitted yet.</div>';
+        return;
       }
-    }
-    // Fallback: no tasks defined, treat t7 as essay
-    if(!foundWriting&&!tasks.length){
-      var essayText2=(comp.answers&&comp.answers.t7)||'';
-      var gk2=stEmail+'|'+exCode;
-      var eg2=S.grades[gk2]&&S.grades[gk2].essay;
-      entries.push({stEmail:stEmail,stName:stName||stEmail,exCode:exCode,exTitle:ex.title,taskNum:7,essayText:essayText2,existing:eg2,maxPts:16,half:8,gk:gk2,legacy:true});
-    }
-  }
-  if(!entries.length){
-    el.innerHTML='<div class="acard" style="text-align:center;padding:28px;color:var(--gray-400);font-size:13px;">No writing tasks submitted yet.</div>';
-    return;
-  }
-  window._essayEntries=entries;
-  var h='';
-  for(var i=0;i<entries.length;i++){
-    var e=entries[i];
-    var flV=e.existing?e.existing.fluency:'', acV=e.existing?e.existing.accuracy:'', fbV=e.existing?e.existing.feedback:'';
-    h+='<div class="acard">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
-    h+='<div><div style="font-weight:700;font-size:14px;">'+e.stName+'</div>';
-    h+='<div style="font-size:11px;color:var(--gray-500);">'+e.exTitle+' &mdash; Task '+e.taskNum+'</div></div>';
-    if(e.existing) h+='<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Graded: '+e.existing.score+'/'+e.maxPts+'</span>';
-    h+='</div>';
-    h+='<div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7;color:var(--charcoal);margin-bottom:12px;min-height:60px;white-space:pre-wrap;">'+(e.essayText||'<span style="color:var(--gray-400);">No response submitted</span>')+'</div>';
-    h+='<div class="score-row">';
-    h+='<div class="score-wrap"><label>Fluency</label><input type="number" min="0" max="'+e.half+'" id="fl-'+i+'" value="'+flV+'" placeholder="0"><span class="mx">/ '+e.half+'</span></div>';
-    h+='<div class="score-wrap"><label>Accuracy</label><input type="number" min="0" max="'+e.half+'" id="ac-'+i+'" value="'+acV+'" placeholder="0"><span class="mx">/ '+e.half+'</span></div>';
-    h+='</div>';
-    h+='<div class="afl"><label>Feedback (optional)</label><textarea id="fb-'+i+'" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:Georgia,serif;font-size:12px;outline:none;resize:vertical;">'+fbV+'</textarea></div>';
-    h+='<button class="abtn abtn-pink" onclick="saveEssayGradeEntry('+i+')">Save Grade</button>';
-    h+='</div>';
-  }
-  el.innerHTML=h;
+      window._essayEntries=entries;
+      var h='';
+      for(var i=0;i<entries.length;i++){
+        var e=entries[i];
+        var flV=e.existing?e.existing.fluency:'', acV=e.existing?e.existing.accuracy:'', fbV=e.existing?e.existing.feedback:'';
+        h+='<div class="acard">';
+        h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
+        h+='<div><div style="font-weight:700;font-size:14px;">'+e.stName+'</div>';
+        h+='<div style="font-size:11px;color:var(--gray-500);">'+e.exTitle+' &mdash; Task '+e.taskNum+'</div></div>';
+        if(e.existing) h+='<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">Graded: '+e.existing.score+'/'+e.maxPts+'</span>';
+        h+='</div>';
+        h+='<div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7;color:var(--charcoal);margin-bottom:12px;min-height:60px;white-space:pre-wrap;">'+(e.essayText||'<span style="color:var(--gray-400);">No response submitted</span>')+'</div>';
+        h+='<div class="score-row">';
+        h+='<div class="score-wrap"><label>Fluency</label><input type="number" min="0" max="'+e.half+'" id="fl-'+i+'" value="'+flV+'" placeholder="0"><span class="mx">/ '+e.half+'</span></div>';
+        h+='<div class="score-wrap"><label>Accuracy</label><input type="number" min="0" max="'+e.half+'" id="ac-'+i+'" value="'+acV+'" placeholder="0"><span class="mx">/ '+e.half+'</span></div>';
+        h+='</div>';
+        h+='<div class="afl"><label>Feedback (optional)</label><textarea id="fb-'+i+'" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:Georgia,serif;font-size:12px;outline:none;resize:vertical;">'+fbV+'</textarea></div>';
+        h+='<button class="abtn abtn-pink" onclick="saveEssayGradeEntry('+i+')">Save Grade</button>';
+        h+='</div>';
+      }
+      el.innerHTML=h;
+    });
+  });
 }
 function saveEssayGradeEntry(i){
   var entries=window._essayEntries||[]; var e=entries[i]; if(!e) return;
@@ -2605,12 +2626,12 @@ function saveEssayGradeEntry(i){
   var total=fluency+accuracy;
   if(!S.grades[e.gk]) S.grades[e.gk]={};
   var obj={score:total,max:e.maxPts,fluency:fluency,accuracy:accuracy,feedback:fb?fb.value.trim():''};
-  if(e.legacy){ S.grades[e.gk].essay=obj; }
+  if(e.legacy){ S.grades[e.gk]['t'+e.taskNum]=obj; S.grades[e.gk].essay=obj; }
   else{ S.grades[e.gk]['wt'+e.taskNum]=obj; S.grades[e.gk]['t'+e.taskNum]=obj; }
-  // Save to Supabase so it persists
+  // Save to Supabase — always use t+taskNum as key for consistency
   var _eEmail = e.gk.split('|')[0];
   var _eCode  = e.gk.split('|')[1];
-  var _tKey   = e.legacy ? 'essay' : 't'+e.taskNum;
+  var _tKey   = 't'+e.taskNum;
   dbUpsert('grades',{
     student_email:_eEmail, exam_code:_eCode, task_key:_tKey,
     score:total, max_score:e.maxPts, fluency:fluency, accuracy:accuracy,
