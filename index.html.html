@@ -2060,16 +2060,17 @@ function renderTask(n){
   if (_submitBtn) {
     var _doShowConfirm = function(e) {
       if (e) { e.preventDefault(); e.stopPropagation(); }
-      alert('SUBMIT CLICKED');
       disableExamProtection();
       document.body.classList.remove('exam-active');
       var ov = document.getElementById('submit-confirm-overlay');
+      alert('overlay found: ' + (ov ? 'YES display='+ov.style.display+' zIndex='+ov.style.zIndex : 'NO - NULL'));
       if (ov) {
         ov.style.display = 'flex';
         ov.style.position = 'fixed';
         ov.style.top = '0'; ov.style.left = '0';
         ov.style.right = '0'; ov.style.bottom = '0';
         ov.style.zIndex = '10000';
+        alert('overlay set - display is now: ' + ov.style.display);
       }
     };
     _submitBtn.addEventListener('click', _doShowConfirm, true);
