@@ -1305,6 +1305,8 @@ async function doLogin() {
   if (!rows.length || !rows[0].activated) { err.textContent='No account found, or account not activated.'; err.style.display='block'; return; }
   if (rows[0].password !== pw) { err.textContent='Incorrect password.'; err.style.display='block'; return; }
   S.student = {name:rows[0].name, email:rows[0].email, phone:rows[0].phone||'', pw:rows[0].password, activated:true, id:rows[0].student_id||''};
+  // Reload fresh data before showing dashboard so grades are current
+  await loadAllData();
   enterDash();
 }
 
@@ -1613,14 +1615,29 @@ function _runExamTimer(examCode, startTimeLeft) {
         dbGet('timer_state', {exam_code:examCode}).then(function(rows) {
           if (!rows.length) return;
           var ts = rows[0];
-          // Admin paused — stop our timer but don't touch Supabase
+          // Admin paused — stop our timer and start polling for resume
           if (ts.paused && !S.timerPaused) {
             S.timerPaused = true;
             clearInterval(S.timerInt);
             showToast('Exam paused by invigilator', '');
+            // Poll every 2 seconds to detect resume
+            clearInterval(window._pausePollInt);
+            window._pausePollInt = setInterval(function() {
+              dbGet('timer_state', {exam_code:examCode}).then(function(pRows) {
+                if (!pRows.length || pRows[0].paused) return;
+                clearInterval(window._pausePollInt);
+                var pts = pRows[0];
+                var pElapsed = pts.started_at ? Math.floor((Date.now()-pts.started_at)/1000) : 0;
+                var pLeft = Math.max(0, (pts.time_left||0) - pElapsed);
+                S.timerPaused = false;
+                _runExamTimer(examCode, pLeft);
+                showToast('Exam resumed by invigilator', 'success');
+              });
+            }, 2000);
           }
-          // Admin resumed — restart with correct time from DB
+          // Admin resumed (caught by poll above, but also handle if timer was running)
           if (!ts.paused && S.timerPaused) {
+            clearInterval(window._pausePollInt);
             var elapsed2 = ts.started_at ? Math.floor((Date.now()-ts.started_at)/1000) : 0;
             var newLeft = Math.max(0, (ts.time_left||curLeft) - elapsed2);
             S.timerPaused = false;
@@ -1704,8 +1721,34 @@ function startExam(isReEntry){
       }
     });
   } else {
+    // First entry — calculate time from schedule start (timer is shared for all students)
     S.examStartTime = Date.now();
-    _runExamTimer(_examCode, _totalSecs);
+    var sc3 = S.schedule && S.schedule[_examCode];
+    if (sc3 && sc3.date && sc3.time) {
+      var schedStart = new Date(sc3.date + 'T' + sc3.time + ':00').getTime();
+      var schedElapsed = Math.floor((Date.now() - schedStart) / 1000);
+      if (schedElapsed > 0 && schedElapsed < _totalSecs) {
+        // Exam already started — join at correct remaining time
+        _runExamTimer(_examCode, Math.max(0, _totalSecs - schedElapsed));
+      } else if (schedElapsed >= _totalSecs) {
+        // Time already expired
+        showTimesUp();
+      } else {
+        // Exam hasn't started yet or just started
+        _runExamTimer(_examCode, _totalSecs);
+      }
+    } else {
+      // Also check Supabase timer_state for existing timer
+      dbGet('timer_state', {exam_code: _examCode}).then(function(rows) {
+        if (rows.length && !rows[0].paused) {
+          var elapsed2 = rows[0].started_at ? Math.floor((Date.now()-rows[0].started_at)/1000) : 0;
+          var left2 = Math.max(0, rows[0].time_left - elapsed2);
+          _runExamTimer(_examCode, left2 > 0 ? left2 : _totalSecs);
+        } else {
+          _runExamTimer(_examCode, _totalSecs);
+        }
+      });
+    }
   }
   if(window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   if(S.pdfFile&&window.pdfjsLib){
@@ -2564,6 +2607,15 @@ function saveEssayGradeEntry(i){
   var obj={score:total,max:e.maxPts,fluency:fluency,accuracy:accuracy,feedback:fb?fb.value.trim():''};
   if(e.legacy){ S.grades[e.gk].essay=obj; }
   else{ S.grades[e.gk]['wt'+e.taskNum]=obj; S.grades[e.gk]['t'+e.taskNum]=obj; }
+  // Save to Supabase so it persists
+  var _eEmail = e.gk.split('|')[0];
+  var _eCode  = e.gk.split('|')[1];
+  var _tKey   = e.legacy ? 'essay' : 't'+e.taskNum;
+  dbUpsert('grades',{
+    student_email:_eEmail, exam_code:_eCode, task_key:_tKey,
+    score:total, max_score:e.maxPts, fluency:fluency, accuracy:accuracy,
+    feedback:fb?fb.value.trim():''
+  },'student_email,exam_code,task_key');
   showToast('Grade saved for '+e.stName+'! '+total+'/'+e.maxPts,'success');
   if(S.student) renderStudentResults();
   buildEssays();
@@ -3105,17 +3157,11 @@ async function doSubmitFromTimesUp() {
   document.getElementById('submit-success-overlay').style.display = 'flex';
 }
 function showSubmitConfirm() {
-  // Permanently disable exam protection for submission
   disableExamProtection();
   document.body.classList.remove('exam-active');
   var ov = document.getElementById('submit-confirm-overlay');
-  if (ov) {
-    ov.style.display = 'flex';
-    ov.style.zIndex = '10000';
-    // Make sure the Yes button calls doSubmit directly
-    var yesBtn = ov.querySelector('button:last-child');
-    if (yesBtn) yesBtn.onclick = doSubmit;
-  }
+  if (!ov) return;
+  ov.style.cssText = 'display:flex !important;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px;';
 }
 async function doSubmit() {
   document.getElementById('submit-confirm-overlay').style.display = 'none';
@@ -3907,7 +3953,7 @@ function renderStudentResults() {
                     tType3==='match'     ? 'Matching'  :
                     tType3==='gapfill4'||tType3==='gapfill5' ? 'Gap Fill' :
                     tType3==='dialogue'  ? 'Dialogue'  : '';
-      var tGrade  = isEssay ? (grades['wt'+t] || grades.essay) : grades[tKey];
+      var tGrade  = isEssay ? (grades['t'+t] || grades['wt'+t] || grades.essay) : grades[tKey];
 
       if (tGrade) {
         totalScore += tGrade.score;
@@ -4296,7 +4342,10 @@ async function loadAllData() {
     }
   } catch(e) { console.error('loadAllData error',e); }
   // Refresh student exam list if student is logged in
-  if (S.student) renderStudentExams();
+  if (S.student) {
+    renderStudentExams();
+    renderStudentResults();
+  }
   // Refresh all admin panels if admin is logged in
   refreshStudentsTable();
   refreshCodesTable();
