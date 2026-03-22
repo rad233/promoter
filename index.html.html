@@ -1018,7 +1018,7 @@ tbody tr:hover{background:var(--gray-50);}
     <div style="font-size:18px;font-weight:700;margin-bottom:10px;">Are you sure?</div>
     <div id="exam-confirm-msg" style="font-size:14px;color:var(--gray-600);margin-bottom:22px;line-height:1.5;"></div>
     <div style="display:flex;gap:10px;">
-      <button class="abtn abtn-ghost" style="flex:1;justify-content:center;padding:12px;" onclick="closeConfirm()">No, go back</button>
+      <button class="abtn abtn-ghost" style="flex:1;justify-content:center;padding:12px;" onclick="closeConfirm();enableExamProtection();">No, go back</button>
       <button class="abtn abtn-pink" style="flex:1;justify-content:center;padding:12px;" onclick="doExamAction()">Yes, confirm</button>
     </div>
   </div>
@@ -1052,7 +1052,7 @@ tbody tr:hover{background:var(--gray-50);}
     <div style="font-family:Georgia,serif;font-size:20px;font-weight:700;margin-bottom:10px;">Submit Exam?</div>
     <div style="font-size:13px;color:var(--gray-600);margin-bottom:24px;line-height:1.6;">Once submitted you will not be able to make any changes. Make sure you have answered all questions.</div>
     <div style="display:flex;gap:10px;">
-      <button onclick="document.getElementById('submit-confirm-overlay').style.display='none'" style="flex:1;padding:13px;background:var(--gray-100);border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:600;cursor:pointer;">Go Back</button>
+      <button onclick="document.getElementById('submit-confirm-overlay').style.display='none';enableExamProtection();" style="flex:1;padding:13px;background:var(--gray-100);border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:600;cursor:pointer;">Go Back</button>
       <button onclick="doSubmit()" style="flex:1;padding:13px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Yes, Submit</button>
     </div>
   </div>
@@ -2866,20 +2866,29 @@ function doExamAction() {
   var code    = overlay.getAttribute('data-code');
   closeConfirm();
   if (action === 'pause') {
-    if (S.timerPaused) {
-      S.timerPaused = false;
-      if (S.activeExamCode) {
-        dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:false, started_at:Date.now()},'exam_code');
-        _runExamTimer(S.activeExamCode, S.timeLeft);
+    // Read current timer state from Supabase first
+    dbGet('timer_state', {exam_code: code}).then(function(rows) {
+      var isPaused = rows.length && rows[0].paused;
+      if (isPaused) {
+        // Resume — calculate correct remaining time
+        var ts = rows[0];
+        var newLeft = ts.time_left || 0;
+        dbUpsert('timer_state', {exam_code:code, time_left:newLeft, paused:false, started_at:Date.now()}, 'exam_code');
+        showToast('Timer resumed', 'success');
+      } else {
+        // Pause — save current remaining time
+        var curLeft = 0;
+        if (rows.length) {
+          var ts2 = rows[0];
+          var elapsed = ts2.started_at ? Math.floor((Date.now()-ts2.started_at)/1000) : 0;
+          curLeft = Math.max(0, (ts2.time_left||0) - elapsed);
+        }
+        dbUpsert('timer_state', {exam_code:code, time_left:curLeft, paused:true, started_at:0}, 'exam_code');
+        showToast('Timer paused', '');
       }
-      showToast('Timer resumed', 'success');
-    } else {
-      S.timerPaused = true;
-      clearInterval(S.timerInt);
-      if (S.activeExamCode) dbUpsert('timer_state',{exam_code:S.activeExamCode, time_left:S.timeLeft, paused:true, started_at:0},'exam_code').then(function(){openLiveEditModal&&openLiveEditModal(S.activeExamCode);});
-      showToast('Timer paused', '');
-    }
-    openLiveEditModal(code);
+      // Re-open modal to reflect new state
+      setTimeout(function(){ openLiveEditModal(code); }, 300);
+    });
   } else if (action === 'adjust') {
     var dir  = overlay.getAttribute('data-dir')  || 'add';
     var mins = parseInt(overlay.getAttribute('data-mins') || '10');
@@ -2949,7 +2958,10 @@ function showTimesUp() {
   S.timerPaused = false;
   var el = document.getElementById('exam-timer');
   if (el) { el.textContent = '0:00:00'; el.className = 'exam-timer danger'; }
-  document.getElementById('times-up-overlay').style.display = 'flex';
+  // Disable exam protection so buttons work
+  disableExamProtection();
+  var ov = document.getElementById('times-up-overlay');
+  if (ov) { ov.style.display = 'flex'; ov.style.zIndex = '9999'; }
 }
 async function doSubmitFromTimesUp() {
   document.getElementById('times-up-overlay').style.display = 'none';
@@ -2965,7 +2977,9 @@ async function doSubmitFromTimesUp() {
   document.getElementById('submit-success-overlay').style.display = 'flex';
 }
 function showSubmitConfirm() {
-  document.getElementById('submit-confirm-overlay').style.display = 'flex';
+  disableExamProtection();
+  var ov = document.getElementById('submit-confirm-overlay');
+  if (ov) { ov.style.display = 'flex'; ov.style.zIndex = '9999'; }
 }
 async function doSubmit() {
   document.getElementById('submit-confirm-overlay').style.display = 'none';
