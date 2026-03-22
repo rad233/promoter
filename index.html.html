@@ -3166,6 +3166,10 @@ function showTimesUp() {
 }
 async function doSubmitFromTimesUp() {
   document.getElementById('times-up-overlay').style.display = 'none';
+  clearInterval(window._pausePollInt);
+  // Capture essay textarea if on screen
+  var _anyEssay2 = document.querySelector('textarea.essay-ta');
+  if (_anyEssay2) { var _tid2=_anyEssay2.id.replace('essay-ta-',''); if(_tid2) S.answers['t'+_tid2]=_anyEssay2.value; }
   if (S.student && S.activeExamCode) {
     var elapsed=S.examStartTime?Math.floor((Date.now()-S.examStartTime)/1000):0;
     var eh=Math.floor(elapsed/3600), em=Math.floor((elapsed%3600)/60);
@@ -3182,12 +3186,32 @@ function showSubmitConfirm() {
   document.body.classList.remove('exam-active');
   var ov = document.getElementById('submit-confirm-overlay');
   if (!ov) return;
-  ov.style.cssText = 'display:flex !important;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px;';
+  ov.style.display = 'flex';
+  ov.style.position = 'fixed';
+  ov.style.top = '0';
+  ov.style.left = '0';
+  ov.style.right = '0';
+  ov.style.bottom = '0';
+  ov.style.background = 'rgba(0,0,0,0.6)';
+  ov.style.zIndex = '10000';
+  ov.style.alignItems = 'center';
+  ov.style.justifyContent = 'center';
+  ov.style.padding = '20px';
 }
 async function doSubmit() {
   document.getElementById('submit-confirm-overlay').style.display = 'none';
   clearInterval(S.timerInt);
+  clearInterval(window._pausePollInt);
   S.timerPaused = false;
+  // Capture essay textarea if currently on essay task
+  var _essayTa = document.getElementById('essay-ta-'+S.curTask);
+  if (_essayTa) S.answers['t'+S.curTask] = _essayTa.value;
+  // Also capture any essay textarea on page regardless of task number
+  var _anyEssay = document.querySelector('textarea.essay-ta');
+  if (_anyEssay) {
+    var _tid = _anyEssay.id.replace('essay-ta-','');
+    if (_tid) S.answers['t'+_tid] = _anyEssay.value;
+  }
   if (S.student && S.activeExamCode) {
     var elapsed = S.examStartTime ? Math.floor((Date.now()-S.examStartTime)/1000) : 0;
     var eh=Math.floor(elapsed/3600), em=Math.floor((elapsed%3600)/60);
