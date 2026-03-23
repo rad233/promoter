@@ -1066,7 +1066,7 @@ tbody tr:hover{background:var(--gray-50);}
     <div style="width:64px;height:64px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;">✓</div>
     <div style="font-family:Georgia,serif;font-size:22px;font-weight:700;margin-bottom:10px;">Exam Submitted!</div>
     <div style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:24px;">Your exam has been successfully submitted. Your results will be available once grading is complete.</div>
-    <button onclick="closeSubmitSuccess()" style="width:100%;padding:14px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Okay</button>
+    <button onclick="closeSubmitSuccess()" style="width:100%;padding:14px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Go to Dashboard</button>
   </div>
 </div>
 
@@ -3195,15 +3195,11 @@ async function doSubmitFromTimesUp() {
     S.completed[compKey]={elapsedStr:elapsedStr, submittedAt:new Date().toISOString(), answers:answers};
     await dbUpsert('submissions',{student_email:S.student.email, exam_code:S.activeExamCode, answers:answers, elapsed_str:elapsedStr, exam_start_time:S.examStartTime||0, submitted_at:new Date().toISOString()},'student_email,exam_code');
   }
-  document.getElementById('submit-success-overlay').style.display = 'flex';
+  var successOv = document.getElementById('submit-success-overlay');
+  if (successOv) { successOv.classList.add('overlay-visible'); successOv.style.display = 'flex'; }
 }
 function showSubmitConfirm() {
-  disableExamProtection();
-  document.body.classList.remove('exam-active');
-  var ov = document.getElementById('submit-confirm-overlay');
-  if (!ov) return;
-  ov.classList.add('overlay-visible');
-  ov.style.display = 'flex';
+  doSubmit();
 }
 async function doSubmit() {
   document.getElementById('submit-confirm-overlay').style.display = 'none';
@@ -3228,7 +3224,8 @@ async function doSubmit() {
     S.completed[compKey]={elapsedStr:elapsedStr, submittedAt:new Date().toISOString(), answers:answers};
     await dbUpsert('submissions',{student_email:S.student.email, exam_code:S.activeExamCode, answers:answers, elapsed_str:elapsedStr, exam_start_time:S.examStartTime||0, submitted_at:new Date().toISOString()},'student_email,exam_code');
   }
-  document.getElementById('submit-success-overlay').style.display = 'flex';
+  var successOv = document.getElementById('submit-success-overlay');
+  if (successOv) { successOv.classList.add('overlay-visible'); successOv.style.display = 'flex'; }
 }
 function closeSubmitSuccess() {
   document.getElementById('submit-success-overlay').style.display = 'none';
