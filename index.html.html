@@ -1052,7 +1052,7 @@ tbody tr:hover{background:var(--gray-50);}
     <div style="font-family:Georgia,serif;font-size:20px;font-weight:700;margin-bottom:10px;">Submit Exam?</div>
     <div style="font-size:13px;color:var(--gray-600);margin-bottom:24px;line-height:1.6;">Once submitted you will not be able to make any changes. Make sure you have answered all questions.</div>
     <div style="display:flex;gap:10px;">
-      <button onclick="document.getElementById('submit-confirm-overlay').style.display='none';enableExamProtection();" style="flex:1;padding:13px;background:var(--gray-100);border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:600;cursor:pointer;">Go Back</button>
+      <button onclick="document.getElementById('submit-confirm-overlay').style.display='none'; if(typeof enableExamProtection==='function') enableExamProtection();" style="flex:1;padding:13px;background:var(--gray-100);border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:600;cursor:pointer;">Go Back</button>
       <button onclick="doSubmit()" style="flex:1;padding:13px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Yes, Submit</button>
     </div>
   </div>
@@ -2049,7 +2049,7 @@ function renderTask(n){
   h+='<div class="exam-nav-btns">';
   if(n>0) h+='<button class="geo-btn geo-btn-outline" onclick="gotoTask('+(n-1)+')">\u2190 \u10E3\u10D9\u10D0\u10DC \u10D3\u10D0\u10D1\u10E0\u10E3\u10DC\u10D4\u10D1\u10D0</button>';
   if(n < _lastTask) h+='<button class="geo-btn geo-btn-pink" onclick="gotoTask('+(n+1)+')">\u10E8\u10D4\u10DB\u10D3\u10D4\u10D2\u10D6\u10D4 \u10D2\u10D0\u10D3\u10D0\u10E1\u10D5\u10DA\u10D0 \u2192</button>';
-  else h+='<button type="button" class="geo-btn geo-btn-pink" style="min-width:160px;" onclick="showSubmitConfirm()">\u10D2\u10D0\u10DB\u10DD\u10EA\u10D3\u10D8\u10E1 \u10D3\u10D0\u10E1\u10E0\u10E3\u10DA\u10D4\u10D1\u10D0 \u2713</button>';
+  else h+='<button type="button" class="geo-btn geo-btn-pink" style="min-width:160px;" onclick="console.log(\'Submit btn clicked\'); showSubmitConfirm();">\u10D2\u10D0\u10DB\u10DD\u10EA\u10D3\u10D8\u10E1 \u10D3\u10D0\u10E1\u10E0\u10E3\u10DA\u10D4\u10D1\u10D0 \u2713</button>';
   h+='</div>';
 
   main.innerHTML=h;
@@ -3216,15 +3216,26 @@ function scrollDrumTo(drumId, val) {
   onDrumScroll(col);
 }
 function showTimesUp() {
-  clearInterval(S.timerInt);
-  S.timerPaused = false;
-  var el = document.getElementById('exam-timer');
-  if (el) { el.textContent = '0:00:00'; el.className = 'exam-timer danger'; }
-  disableExamProtection();
-  document.body.classList.remove('exam-active');
-  var ov = document.getElementById('times-up-overlay');
-  if (ov) { ov.style.display = 'flex'; ov.style.zIndex = '10000'; }
+  try {
+    clearInterval(S.timerInt);
+    S.timerPaused = false;
+    var el = document.getElementById('exam-timer');
+    if (el) { el.textContent = '0:00:00'; el.className = 'exam-timer danger'; }
+    
+    try { if (typeof disableExamProtection === 'function') disableExamProtection(); } catch(e) {}
+    try { document.body.classList.remove('exam-active'); } catch(e) {}
+    
+    var ov = document.getElementById('times-up-overlay');
+    if (ov) { 
+      ov.style.display = 'flex'; 
+      ov.style.zIndex = '100000'; 
+    }
+  } catch(err) {
+    console.error("showTimesUp error:", err);
+    alert("Time's up! (Error showing popup)");
+  }
 }
+
 async function doSubmitFromTimesUp() {
   var succ = document.getElementById('submit-success-overlay');
   if (succ) {
@@ -3235,7 +3246,6 @@ async function doSubmitFromTimesUp() {
   if (tu) tu.style.display = 'none';
   clearInterval(window._pausePollInt);
   try {
-    // Capture essay textarea if on screen
     var _anyEssay2 = document.querySelector('textarea.essay-ta');
     if (_anyEssay2) { var _tid2=_anyEssay2.id.replace('essay-ta-',''); if(_tid2) S.answers['t'+_tid2]=_anyEssay2.value; }
     if (S.student && S.activeExamCode) {
@@ -3251,21 +3261,29 @@ async function doSubmitFromTimesUp() {
     console.error("doSubmitFromTimesUp error:", e);
   }
 }
+
 function showSubmitConfirm() {
-  try { disableExamProtection(); } catch(e) { console.error('disableExamProtection error', e); }
-  try { document.body.classList.remove('exam-active'); } catch(e) {}
-  var ov = document.getElementById('submit-confirm-overlay');
-  if (ov) {
-    ov.style.display = 'flex';
-    ov.style.position = 'fixed';
-    ov.style.top = '0';
-    ov.style.left = '0';
-    ov.style.right = '0';
-    ov.style.bottom = '0';
-    ov.style.zIndex = '100000';
-  } else {
-    console.error("Submit confirmation overlay not found!");
-    alert("Are you sure you want to finish and submit your exam?");
+  try {
+    try { if (typeof disableExamProtection === 'function') disableExamProtection(); } catch(e) { console.error('disableExamProtection error', e); }
+    try { document.body.classList.remove('exam-active'); } catch(e) {}
+    
+    var ov = document.getElementById('submit-confirm-overlay');
+    if (ov) {
+      ov.style.display = 'flex';
+      ov.style.position = 'fixed';
+      ov.style.top = '0';
+      ov.style.left = '0';
+      ov.style.right = '0';
+      ov.style.bottom = '0';
+      ov.style.zIndex = '100000';
+    } else {
+      console.error("Submit confirmation overlay not found!");
+      alert("Are you sure you want to finish and submit your exam?");
+      doSubmit();
+    }
+  } catch(err) {
+    console.error("showSubmitConfirm error:", err);
+    alert("Error showing submit confirm! Proceeding to submit...");
     doSubmit();
   }
 }
