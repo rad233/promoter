@@ -1168,7 +1168,7 @@ var S = {
   examCodes:   {},
   examIDs:     {},
   usedIDs:     {},
-  adminCreds:  {u:'aleqsandre.lomadze@schoolprogress.ge', p:'AleksandreTheDevil'},
+  adminAuth:   null,
   student:   null,
   answers:   {t1:{},t2:{},t3:{},t4:{},t5:{},t6:{},t7:''},
   timeLeft:  150*60,
@@ -1328,12 +1328,18 @@ async function doSignup() {
   enterDash();
 }
 
-function doAdminLogin() {
+async function doAdminLogin() {
   var u   = document.getElementById('al-user').value.trim();
   var p   = document.getElementById('al-pw').value;
   var err = document.getElementById('al-err');
-  err.style.display = 'none';
-  if (u === S.adminCreds.u && p === S.adminCreds.p) {
+  if (err) err.style.display = 'none';
+  
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: u,
+    password: p,
+  });
+
+  if (data.user && !error) {
     showPage('page-admin');
     showSec('dashboard');
     buildEssays();
@@ -1345,10 +1351,16 @@ function doAdminLogin() {
     updateAdminDashboard();
     clearInterval(window._dashInt);
     window._dashInt = setInterval(updateAdminDashboard, 5000);
-  } else { err.style.display='block'; }
+  } else { 
+    if (err) {
+      err.textContent = error ? error.message : "Incorrect credentials.";
+      err.style.display = 'block';
+    }
+  }
 }
 
-function doLogout() {
+async function doLogout() {
+  await sb.auth.signOut();
   S.student=null; S.answers={t1:{},t2:{},t3:{},t4:{},t5:{},t6:{},t7:''};
   var _activeEx = S.activeExamCode && S.exams[S.activeExamCode];
   var _examDur  = _activeEx ? (_activeEx.duration || 150) : 150;
@@ -1356,8 +1368,8 @@ function doLogout() {
   S.examStartTime = Date.now();
   clearInterval(S.timerInt); clearInterval(S.liveInt);
   showPage('page-auth');
-  document.getElementById('li-code').value='';
-  document.getElementById('li-pw').value='';
+  var liCode = document.getElementById('li-code'); if (liCode) liCode.value='';
+  var liPw = document.getElementById('li-pw'); if (liPw) liPw.value='';
 }
 
 function enterDash() {
@@ -3164,7 +3176,18 @@ function doExamAction() {
       var newLeft = dir === 'add' ? curLeft + secs : Math.max(10, curLeft - secs);
       
       dbUpsert('timer_state', {exam_code:code, time_left:newLeft, paused:ts.paused, started_at:(ts.paused?0:Date.now())}, 'exam_code');
-      
+
+      // Sync schedule duration so getExamStatus() shows "ended" only when the adjusted timer actually finishes
+      var _sc = S.schedule && S.schedule[code];
+      if (_sc && _sc.date && _sc.time) {
+        var _schedStartMs = new Date(_sc.date + 'T' + _sc.time + ':00').getTime();
+        var _newDurMins = Math.ceil((Date.now() - _schedStartMs + newLeft * 1000) / 60000);
+        if (_newDurMins > 0) {
+          S.schedule[code].duration = _newDurMins;
+          dbUpsert('schedule', {exam_code: code, date: _sc.date, time: _sc.time, duration: _newDurMins}, 'exam_code');
+        }
+      }
+
       if (dir === 'add') showToast('+' + mins + ' min added to timer', 'success');
       else showToast('\u2212' + mins + ' min removed from timer', '');
       
@@ -3182,11 +3205,13 @@ function showGuaranteedSuccessModal(isTimesUp) {
   
   var title = isTimesUp ? "Time's Up!" : "Exam Submitted!";
   var msg = isTimesUp ? "Your time has run out and your answers have been recorded." : "Your exam has been successfully submitted. Your results will be available once grading is complete.";
-  var icon = isTimesUp ? "&#9200;" : "&#10003;";
-  var iconColor = isTimesUp ? "#ff9800" : "#2e7d32";
-  var iconBg = isTimesUp ? "#fff3e0" : "#e8f5e9";
   
-  modal.innerHTML = '<div style="background:#fff;border-radius:20px;width:100%;max-width:380px;padding:36px;text-align:center;box-shadow:0 10px 50px rgba(0,0,0,0.5);"><div style="width:64px;height:64px;background:'+iconBg+';border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;color:'+iconColor+';">'+icon+'</div><div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;margin-bottom:10px;color:#333;">'+title+'</div><div style="font-size:14px;color:#666;line-height:1.6;margin-bottom:24px;">'+msg+'</div><button onclick="document.getElementById(\''+id+'\').remove(); showPage(\'page-student\'); renderStudentExams(); renderStudentResults();" style="width:100%;padding:14px;background:#e8006e;color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:bold;cursor:pointer;">Okay, return to dashboard</button></div>';
+  var iconHtml = '';
+  if (!isTimesUp) {
+    iconHtml = '<div style="width:64px;height:64px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;color:#2e7d32;">&#10003;</div>';
+  }
+  
+  modal.innerHTML = '<div style="background:#fff;border-radius:20px;width:100%;max-width:380px;padding:36px;text-align:center;box-shadow:0 10px 50px rgba(0,0,0,0.5);">' + iconHtml + '<div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;margin-bottom:10px;color:#333;">'+title+'</div><div style="font-size:14px;color:#666;line-height:1.6;margin-bottom:24px;">'+msg+'</div><button id="gsm-btn" disabled onclick="document.getElementById(\''+id+'\').remove(); showPage(\'page-student\'); renderStudentExams(); renderStudentResults();" style="width:100%;padding:14px;background:#e8006e;color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:bold;cursor:not-allowed;opacity:0.6;">Saving...</button></div>';
   document.body.appendChild(modal);
 }
 
@@ -3268,6 +3293,14 @@ async function doSubmitFromTimesUp() {
     }
   } catch(e) {
     console.error("doSubmitFromTimesUp error:", e);
+  } finally {
+    var btn = document.getElementById('gsm-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.textContent = 'Okay, return to dashboard';
+    }
   }
 }
 
@@ -3302,6 +3335,14 @@ async function doSubmit() {
     }
   } catch(e) {
     console.error("doSubmit error:", e);
+  } finally {
+    var btn = document.getElementById('gsm-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.textContent = 'Okay, return to dashboard';
+    }
   }
 }
 function closeSubmitSuccess() {
@@ -4467,7 +4508,9 @@ async function loadAllData() {
     var subs = await dbGet('submissions');
     S.completed = {};
     subs.forEach(function(r) {
-      S.completed[r.student_email+'|'+r.exam_code] = {elapsedStr:r.elapsed_str||'', answers:r.answers||{}, submittedAt:r.submitted_at, examStartTime:r.exam_start_time||0};
+      if (r.elapsed_str !== 'in_progress') {
+        S.completed[r.student_email+'|'+r.exam_code] = {elapsedStr:r.elapsed_str||'', answers:r.answers||{}, submittedAt:r.submitted_at, examStartTime:r.exam_start_time||0};
+      }
     });
     var gradeRows = await dbGet('grades');
     S.grades = {};
@@ -4584,7 +4627,11 @@ function updateAdminDashboard() {
 function startRealtimeSubscriptions() {
   sb.channel('subs').on('postgres_changes',{event:'*',schema:'public',table:'submissions'},function(payload){
     var r=payload.new; if(!r) return;
-    S.completed[r.student_email+'|'+r.exam_code]={elapsedStr:r.elapsed_str||'', answers:r.answers||{}, submittedAt:r.submitted_at};
+    if (r.elapsed_str !== 'in_progress') {
+      S.completed[r.student_email+'|'+r.exam_code]={elapsedStr:r.elapsed_str||'', answers:r.answers||{}, submittedAt:r.submitted_at};
+    } else {
+      delete S.completed[r.student_email+'|'+r.exam_code];
+    }
     var el=document.getElementById('sec-tasks'); if(el&&el.classList.contains('active')) renderTaskList();
     var el2=document.getElementById('sec-grading'); if(el2&&el2.classList.contains('active')) buildEssays();
   }).subscribe();
