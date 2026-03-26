@@ -453,6 +453,8 @@ tbody tr:hover{background:var(--gray-50);}
 .inline-dd:focus{outline:none;border-color:var(--pink);}
 </style>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <!-- LOGIN / SIGNUP -->
@@ -4182,7 +4184,7 @@ function _doRenderStudentResults() {
     html2 += '<div class="exam-card">'
       + '<div class="ec-head">'
       + '<div>'
-      + '<div class="ec-title">' + ex.title + '</div>'
+      + '<div class="ec-title">' + ex.title + ' ' + statusBadge + '</div>'
       + '<div class="ec-meta"><span>' + (item.sched.date||'') + '</span>' + (metaTime?'<span>'+metaTime+'</span>':'') + '</div>'
       + '</div>'
       + (allGraded ? '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
