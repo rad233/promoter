@@ -4162,8 +4162,8 @@ function _doRenderStudentResults() {
     }
 
     // Total + pass/fail
-    if (gradeMaxSum > 0) totalMax = gradeMaxSum;
-    var passMark = Math.ceil((ex.pts || totalMax) * 0.25);
+    var totalMax = ex.pts || gradeMaxSum || 70;
+    var passMark = Math.ceil(totalMax * 0.25);
     var passed   = totalScore >= passMark;
     var statusBadge;
     if (!allGraded) {
@@ -4253,7 +4253,15 @@ async function downloadResultPDF(examCode) {
 
   // Header - Manual Drawing
   doc.setTextColor(232, 0, 110);
-  doc.setFontSize(24);
+  var logoImg = document.querySelector('.auth-logo img');
+  if (logoImg && logoImg.src) {
+    try {
+      doc.addImage(logoImg.src, 'PNG', margin, y, 40, 15);
+      y += 20;
+    } catch(e) { console.warn("Logo add failed", e); }
+  }
+
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
   doc.text('Official Score Report', margin, y + 10);
   
@@ -4337,7 +4345,7 @@ async function downloadResultPDF(examCode) {
 
   // Summary Box
   y += 5;
-  var totalMax = gradeMaxSum || ex.pts || 70;
+  var totalMax = ex.pts || gradeMaxSum || 70;
   var passMark = Math.ceil(totalMax * 0.25);
   var passed = totalScore >= passMark;
   
