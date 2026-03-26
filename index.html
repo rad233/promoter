@@ -4236,18 +4236,14 @@ function showTaskFeedback(examCode, taskKey) {
 }
 
 async function downloadResultPDF(examCode) {
-  if (!window.html2pdf) {
-    alert('PDF library not loaded. Please refresh or check your internet connection.');
-    return;
-  }
-  
-  if (!S.student) { alert('Student data not found'); return; }
+  if (!window.html2pdf) { alert('PDF library not loaded. Check internet.'); return; }
+  if (!S.student) { alert('Not logged in'); return; }
   
   var email = S.student.email;
   var name  = S.student.name;
   var ex    = S.exams[examCode];
   var sched = S.schedule && S.schedule[examCode];
-  if (!ex || !sched) { alert('Exam data not found'); return; }
+  if (!ex || !sched) { alert('Exam data missing'); return; }
 
   var gradeKey = email + '|' + examCode;
   var grades   = S.grades[gradeKey] || {};
@@ -4259,33 +4255,20 @@ async function downloadResultPDF(examCode) {
   for (var t = 1; t <= taskCount; t++) {
     var tKey = 't' + t;
     var tType = (ex.tasks && ex.tasks[t-1] && ex.tasks[t-1].type) || '';
-    var tLbl = tType === 'essay' || tType === 'writing' ? 'Writing' :
-               tType === 'listening' ? 'Listening' :
-               tType === 'reading'   ? 'Reading'   :
-               tType === 'match'     ? 'Matching'  :
-               tType === 'gapfill4' || tType === 'gapfill5' ? 'Gap Fill' :
-               tType === 'dialogue'  ? 'Dialogue'  : 'General';
-    
     var tGrade = grades[tKey];
-    // essay fallback
     if (!tGrade && (tType === 'essay' || tType === 'writing')) {
       tGrade = grades['t'+t] || grades['wt'+t] || grades['essay'] || grades['t7'] || grades['wt7'];
     }
-
-    var scoreStr = 'Pending', maxStr = '-', feedback = '';
     if (tGrade) {
       totalScore += tGrade.score;
       gradeMaxSum += tGrade.max;
-      scoreStr = tGrade.score;
-      maxStr = tGrade.max;
-      feedback = tGrade.feedback || '';
+      var tLbl = tType==='essay'||tType==='writing'?'Writing':tType==='listening'?'Listening':tType==='reading'?'Reading':tType==='match'?'Matching':tType==='gapfill4'||tType==='gapfill5'?'Gap Fill':tType==='dialogue'?'Dialogue':'General';
+      tableRows += '<tr>'
+        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Task ' + t + '<br><small style="color:#888;">' + tLbl + '</small></td>'
+        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:center; font-weight:700;">' + tGrade.score + ' / ' + tGrade.max + '</td>'
+        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:left; font-size:12px;">' + (tGrade.feedback || 'No feedback') + '</td>'
+        + '</tr>';
     }
-
-    tableRows += '<tr>'
-      + '<td style="padding:10px;border-bottom:1px solid #eee;">Task ' + t + '<br><small style="color:#888;">' + tLbl + '</small></td>'
-      + '<td style="padding:10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;">' + scoreStr + ' / ' + maxStr + '</td>'
-      + '<td style="padding:10px;border-bottom:1px solid #eee;font-size:12px;color:#555;">' + (feedback || '<i style="color:#aaa;">No feedback</i>') + '</td>'
-      + '</tr>';
   }
 
   if (gradeMaxSum > 0) totalMax = gradeMaxSum;
@@ -4295,79 +4278,44 @@ async function downloadResultPDF(examCode) {
 
   var container = document.createElement('div');
   container.id = 'temp-pdf-report';
-  // Standard CSS instead of grids to be super safe
-  container.style.cssText = 'padding:40px; font-family:Georgia,serif; color:#2d2d2d; background-color:#ffffff; width:800px; position:fixed; top:0; left:100%; z-index:10000;';
+  // Standard Arial/sans-serif to avoid font-load issues.
+  // Move it way off to the right but keep it in the flow for renderer
+  container.style.cssText = 'padding:40px; font-family:Arial, sans-serif; width:700px; background:#fff; color:#2d2d2d; position:fixed; left:5000px; top:0; z-index:-10000;';
 
   container.innerHTML = 
-    '<table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:2px solid #e8006e; margin-bottom:30px;">'
-      + '<tr>'
-        + '<td style="padding-bottom:20px;">'
-          + '<h1 style="margin:0; color:#e8006e; font-size:28px;">Official Score Report</h1>'
-          + '<p style="margin:5px 0 0; color:#666; font-size:14px;">English Promoter &mdash; Examination Board</p>'
-        + '</td>'
-        + '<td align="right" style="padding-bottom:20px;">'
-          + '<img src="' + logoSrc + '" style="height:50px; display:block;">'
-        + '</td>'
-      + '</tr>'
-    + '</table>'
-    
-    + '<table width="100%" cellpadding="20" cellspacing="0" style="margin-bottom:30px; background-color:#f9f9f9; border-radius:10px;">'
-      + '<tr>'
-        + '<td width="50%">'
-          + '<div style="font-size:11px; text-transform:uppercase; color:#aaa; font-weight:700; margin-bottom:4px;">Student Name</div>'
-          + '<div style="font-size:18px; font-weight:700;">' + name + '</div>'
-          + '<div style="font-size:13px; color:#666; margin-top:2px;">' + email + '</div>'
-        + '</td>'
-        + '<td width="50%" align="right">'
-          + '<div style="font-size:11px; text-transform:uppercase; color:#aaa; font-weight:700; margin-bottom:4px;">Examination Date</div>'
-          + '<div style="font-size:16px;">' + (sched.date || '-') + '</div>'
-        + '</td>'
-      + '</tr>'
-    + '</table>'
-
-    + '<div style="margin-bottom:30px;">'
-      + '<div style="font-size:11px; text-transform:uppercase; color:#aaa; font-weight:700; margin-bottom:4px;">Examination Title</div>'
-      + '<div style="font-size:22px; font-weight:700; color:#2d2d2d;">' + ex.title + '</div>'
-    + '</div>'
-    
-    + '<table width="100%" cellpadding="10" cellspacing="0" style="border-collapse:collapse; margin-bottom:30px;">'
-      + '<tr style="background-color:#f2f2f2;">'
-        + '<th align="left" style="font-size:12px; text-transform:uppercase;">Task</th>'
-        + '<th align="center" style="font-size:12px; text-transform:uppercase; width:120px;">Score</th>'
-        + '<th align="left" style="font-size:12px; text-transform:uppercase;">Feedback</th>'
-      + '</tr>'
-      + tableRows
-    + '</table>'
-
-    + '<table width="100%" cellpadding="20" cellspacing="0" style="background-color:#e8006e; color:#ffffff; border-radius:10px;">'
-      + '<tr>'
-        + '<td>'
-          + '<div style="font-size:12px; text-transform:uppercase; opacity:0.8; font-weight:700;">Overall Result</div>'
-          + '<div style="font-size:32px; font-weight:700;">' + resultText + '</div>'
-        + '</td>'
-        + '<td align="right">'
-          + '<div style="font-size:12px; text-transform:uppercase; opacity:0.8; font-weight:700;">Final Score</div>'
-          + '<div style="font-size:32px; font-weight:700;">' + totalScore + ' <span style="font-size:18px; opacity:0.8;">/ ' + totalMax + '</span></div>'
-        + '</td>'
-      + '</tr>'
-    + '</table>'
-    
-    + '<div style="margin-top:40px; font-size:11px; color:#aaa; text-align:center; border-top:1px solid #eee; padding-top:20px;">'
-      + 'This is an automated score report. Report ID: ' + examCode + '-' + Date.now()
-    + '</div>';
+    '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:20px; border-bottom:2px solid #e8006e;">'
+    + '<tr><td style="padding-bottom:15px;"><h1 style="margin:0; color:#e8006e; font-size:24px;">Official Score Report</h1></td>'
+    + '<td align="right" style="padding-bottom:15px;"><img src="' + logoSrc + '" height="40" style="display:block;"></td></tr></table>'
+    + '<table width="100%" border="0" cellspacing="0" cellpadding="15" style="background:#f5f5f5; border-radius:8px; margin-bottom:20px;">'
+    + '<tr><td width="50%"><div style="font-size:10px; text-transform:uppercase; color:#888;">Student</div><div style="font-size:16px; font-weight:700;">' + name + '</div></td>'
+    + '<td width="50%" align="right"><div style="font-size:10px; text-transform:uppercase; color:#888;">Date</div><div style="font-size:16px;">' + (sched.date || '') + '</div></td></tr></table>'
+    + '<p style="margin-bottom:20px; font-size:18px;"><strong>Exam:</strong> ' + ex.title + '</p>'
+    + '<table width="100%" border="1" cellspacing="0" cellpadding="8" style="margin-bottom:20px; border-collapse:collapse; border:1px solid #ddd;">'
+    + '<tr style="background:#eee;"><th align="left">Task</th><th align="center">Score</th><th align="left">Feedback</th></tr>'
+    + tableRows + '</table>'
+    + '<table width="100%" border="0" cellspacing="0" cellpadding="15" style="background:#e8006e; color:#fff; border-radius:8px;">'
+    + '<tr><td><div style="font-size:10px; opacity:0.8;">OVERALL RESULT</div><div style="font-size:24px; font-weight:700;">' + resultText + '</div></td>'
+    + '<td align="right"><div style="font-size:10px; opacity:0.8;">TOTAL SCORE</div><div style="font-size:24px; font-weight:700;">' + totalScore + ' / ' + totalMax + '</div></td></tr>'
+    + '</table>';
 
   document.body.appendChild(container);
 
+  // VALIDATION: Check if content actually exists
+  if (!container.innerText || container.innerText.trim().length < 20) {
+    alert('Debug Error: Report content is empty or failed to build. Score was: ' + totalScore);
+    document.body.removeChild(container);
+    return;
+  }
+
   var opt = {
-    margin:       0.2,
-    filename:     'Report_Card_' + name.replace(/\s+/g, '_') + '.pdf',
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, logging: true },
-    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    margin: 0.5,
+    filename: 'Report_' + name.replace(/\s+/g,'_') + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 1.5, useCORS: true, logging: false },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
-  alert('Starting PDF creation... please wait.');
-
+  alert('Generating Report Card...');
   setTimeout(function() {
     html2pdf().set(opt).from(container).save().then(function() {
       document.body.removeChild(container);
