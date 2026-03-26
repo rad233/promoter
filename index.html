@@ -4361,26 +4361,38 @@ async function downloadResultPDF(examCode) {
   };
 
   // Append to body temporarily so it can be rendered
-  // Use opacity and z-index instead of off-screen left to ensure renderer captures it
   container.id = 'temp-pdf-report';
   container.style.position = 'fixed';
   container.style.left = '0';
   container.style.top = '0';
-  container.style.zIndex = '-1000';
-  container.style.opacity = '0.01';
-  container.style.pointerEvents = 'none';
+  container.style.zIndex = '-9999';
+  container.style.backgroundColor = '#ffffff';
+  // Use a slightly higher opacity to be safe, but keep it invisible behind everything
+  container.style.opacity = '0.1';
   document.body.appendChild(container);
 
-  // Give the browser a moment to paint the new element
-  setTimeout(function() {
-    html2pdf().set(opt).from(container).save().then(function() {
-      document.body.removeChild(container);
-    }).catch(function(err) {
-      console.error('PDF Generation Error:', err);
-      document.body.removeChild(container);
-      alert('Error generating PDF. Please check console.');
-    });
-  }, 500);
+  var opt = {
+    margin:       [0.5, 0.5],
+    filename:     'Report_Card_' + name.replace(/\s+/g, '_') + '.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 1, 
+      useCORS: true, 
+      letterRendering: true,
+      logging: true // This helps if the user checks console
+    },
+    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
+
+  // Use the promise-based API with a catch
+  html2pdf().set(opt).from(container).save().then(function() {
+    console.log('PDF saved');
+    document.body.removeChild(container);
+  }).catch(function(err) {
+    console.error('PDF Error:', err);
+    alert('PDF Generation failed. Please try again or contact support.');
+    document.body.removeChild(container);
+  });
 }
 
 
