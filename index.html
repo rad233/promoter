@@ -4356,11 +4356,22 @@ async function downloadResultPDF(examCode) {
     margin:       0.5,
     filename:     'Report_Card_' + name.replace(/\s+/g, '_') + '_' + examCode + '.pdf',
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2 },
+    html2canvas:  { scale: 2, useCORS: true },
     jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
-  html2pdf().set(opt).from(container).save();
+  // Append to body temporarily so it can be rendered
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  document.body.appendChild(container);
+
+  html2pdf().set(opt).from(container).save().then(function() {
+    document.body.removeChild(container);
+  }).catch(function(err) {
+    console.error('PDF Generation Error:', err);
+    document.body.removeChild(container);
+  });
 }
 
 
