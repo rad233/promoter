@@ -4256,14 +4256,20 @@ async function downloadResultPDF(examCode) {
   var logoImg = document.querySelector('.auth-logo img');
   if (logoImg && logoImg.src) {
     try {
-      doc.addImage(logoImg.src, 'PNG', margin, y, 55, 20); // Larger logo
-      y += 25;
-    } catch(e) { console.warn("Logo add failed", e); }
+      var imgProps = doc.getImageProperties(logoImg.src);
+      var logoW = 65; // Target width
+      var logoH = (imgProps.height * logoW) / imgProps.width;
+      doc.addImage(logoImg.src, 'PNG', margin, y, logoW, logoH);
+      y += (logoH + 5); 
+    } catch(e) { 
+      console.warn("Logo add failed", e); 
+      y += 20;
+    }
   }
 
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('Official Score Report', margin, y + 10);
+  doc.text('Official Score Report', margin, y + 5);
   
   doc.setDrawColor(232, 0, 110);
   doc.setLineWidth(1);
