@@ -4256,8 +4256,8 @@ async function downloadResultPDF(examCode) {
   var logoImg = document.querySelector('.auth-logo img');
   if (logoImg && logoImg.src) {
     try {
-      doc.addImage(logoImg.src, 'PNG', margin, y, 40, 15);
-      y += 20;
+      doc.addImage(logoImg.src, 'PNG', margin, y, 55, 20); // Larger logo
+      y += 25;
     } catch(e) { console.warn("Logo add failed", e); }
   }
 
