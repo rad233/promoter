@@ -4185,11 +4185,8 @@ function _doRenderStudentResults() {
       + '<div class="ec-title">' + ex.title + '</div>'
       + '<div class="ec-meta"><span>' + (item.sched.date||'') + '</span>' + (metaTime?'<span>'+metaTime+'</span>':'') + '</div>'
       + '</div>'
-      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
-      + '<span class="ec-status s-done">Completed</span>'
-      + statusBadge
-      + '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
-      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Report Card</button>'
+      + (allGraded ? '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
+      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Report Card</button>' : '')
       + '</div>'
       + '</div>'
       + '<div class="results-grid">' + taskCards + totalCard + '</div>'
@@ -4236,88 +4233,130 @@ function showTaskFeedback(examCode, taskKey) {
 }
 
 async function downloadResultPDF(examCode) {
-  if (!window.html2pdf) { alert('PDF library not loaded. Check internet.'); return; }
-  if (!S.student) { alert('Not logged in'); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library not fully loaded. Please refresh the page.');
+    return;
+  }
   
-  var email = S.student.email;
-  var name  = S.student.name;
+  var student = S.student;
+  var email = student.email;
+  var name  = student.name;
   var ex    = S.exams[examCode];
   var sched = S.schedule && S.schedule[examCode];
-  if (!ex || !sched) { alert('Exam data missing'); return; }
+  if (!ex || !sched) { alert('Data missing'); return; }
 
+  var doc = new jspdf.jsPDF();
+  var margin = 20;
+  var y = margin;
+
+  // Header - Manual Drawing
+  doc.setTextColor(232, 0, 110);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Official Score Report', margin, y + 10);
+  
+  doc.setDrawColor(232, 0, 110);
+  doc.setLineWidth(1);
+  doc.line(margin, y + 18, 190, y + 18);
+  y += 30;
+
+  // Student Info Box
+  doc.setFillColor(245, 245, 245);
+  doc.rect(margin, y, 170, 30, 'F');
+  
+  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('STUDENT NAME', margin + 8, y + 10);
+  doc.text('EXAMINATION DATE', margin + 95, y + 10);
+  
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(13);
+  doc.text(name, margin + 8, y + 20);
+  doc.setFontSize(11);
+  doc.text(sched.date || '-', margin + 95, y + 20);
+  y += 45;
+
+  // Exam Title
+  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(9);
+  doc.text('EXAMINATION TITLE', margin, y);
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(16);
+  doc.text(ex.title, margin, y + 8);
+  y += 20;
+
+  // Table Title
+  doc.setFillColor(30, 30, 30);
+  doc.rect(margin, y, 170, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.text('TASK', margin + 5, y + 6);
+  doc.text('SCORE', margin + 55, y + 6);
+  doc.text('FEEDBACK', margin + 85, y + 6);
+  y += 10;
+
+  // Table Content
   var gradeKey = email + '|' + examCode;
   var grades   = S.grades[gradeKey] || {};
   var taskCount = (ex.tasks && ex.tasks.length) ? ex.tasks.length : 7;
-  var totalScore = 0, totalMax = ex.pts || 70;
-  var gradeMaxSum = 0;
-  var tableRows = '';
+  var totalScore = 0, gradeMaxSum = 0;
 
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  
   for (var t = 1; t <= taskCount; t++) {
     var tKey = 't' + t;
     var tType = (ex.tasks && ex.tasks[t-1] && ex.tasks[t-1].type) || '';
     var tGrade = grades[tKey];
     if (!tGrade && (tType === 'essay' || tType === 'writing')) {
-      tGrade = grades['t'+t] || grades['wt'+t] || grades['essay'] || grades['t7'] || grades['wt7'];
+      tGrade = grades['t'+t] || grades['wt'+t] || grades['essay'];
     }
+    
     if (tGrade) {
       totalScore += tGrade.score;
       gradeMaxSum += tGrade.max;
-      var tLbl = tType==='essay'||tType==='writing'?'Writing':tType==='listening'?'Listening':tType==='reading'?'Reading':tType==='match'?'Matching':tType==='gapfill4'||tType==='gapfill5'?'Gap Fill':tType==='dialogue'?'Dialogue':'General';
-      tableRows += '<tr>'
-        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Task ' + t + '<br><small style="color:#888;">' + tLbl + '</small></td>'
-        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:center; font-weight:700;">' + tGrade.score + ' / ' + tGrade.max + '</td>'
-        + '<td style="padding:10px; border-bottom:1px solid #eee; text-align:left; font-size:12px;">' + (tGrade.feedback || 'No feedback') + '</td>'
-        + '</tr>';
+      
+      doc.setTextColor(0, 0, 0);
+      doc.text('Task ' + t, margin + 5, y + 5);
+      doc.text(tGrade.score + ' / ' + tGrade.max, margin + 55, y + 5);
+      
+      var fb = tGrade.feedback || 'No feedback';
+      var fbLines = doc.splitTextToSize(fb, 85);
+      doc.setTextColor(80, 80, 80);
+      doc.text(fbLines, margin + 85, y + 5);
+      
+      var rowHeight = Math.max(10, fbLines.length * 5);
+      doc.setDrawColor(240, 240, 240);
+      doc.line(margin, y + rowHeight - 2, 190, y + rowHeight - 2);
+      y += rowHeight;
     }
   }
 
-  if (gradeMaxSum > 0) totalMax = gradeMaxSum;
-  var passed = totalScore >= Math.ceil(totalMax * 0.25);
-  var resultText = passed ? 'PASS' : 'FAIL';
-  var logoSrc = document.querySelector('.nav-logo img') ? document.querySelector('.nav-logo img').src : '';
+  // Summary Box
+  y += 5;
+  var totalMax = gradeMaxSum || ex.pts || 70;
+  var passMark = Math.ceil(totalMax * 0.25);
+  var passed = totalScore >= passMark;
+  
+  doc.setFillColor(232, 0, 110);
+  doc.rect(margin, y, 170, 25, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text('OVERALL RESULT', margin + 10, y + 8);
+  doc.text('TOTAL SCORE', margin + 100, y + 8);
+  
+  doc.setFontSize(18);
+  doc.text(passed ? 'PASS' : 'FAIL', margin + 10, y + 18);
+  doc.text(totalScore + ' / ' + totalMax, margin + 100, y + 18);
+  
+  y += 40;
+  doc.setTextColor(180, 180, 180);
+  doc.setFontSize(7);
+  doc.text('Generated Report Card Service - English Promoter Exam Board - ' + Date.now(), 105, y, { align: 'center' });
 
-  var container = document.createElement('div');
-  container.id = 'temp-pdf-report';
-  // Standard Arial/sans-serif. Visible but behind with low z-index.
-  container.style.cssText = 'padding:40px; font-family:Arial, sans-serif; width:700px; background:#fff; color:#2d2d2d; position:absolute; left:0; top:0; z-index:-1; opacity:1;';
-
-  var contentHtml = 
-    '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:20px; border-bottom:2px solid #e8006e;">'
-    + '<tr><td style="padding-bottom:15px;"><h1 style="margin:0; color:#e8006e; font-size:24px;">Official Score Report</h1></td>'
-    + '<td align="right" style="padding-bottom:15px;"><img src="' + logoSrc + '" height="40" style="display:block;"></td></tr></table>'
-    + '<table width="100%" border="0" cellspacing="0" cellpadding="15" style="background:#f5f5f5; border-radius:8px; margin-bottom:20px;">'
-    + '<tr><td width="50%"><div style="font-size:10px; text-transform:uppercase; color:#888;">Student</div><div style="font-size:16px; font-weight:700;">' + name + '</div></td>'
-    + '<td width="50%" align="right"><div style="font-size:10px; text-transform:uppercase; color:#888;">Date</div><div style="font-size:16px;">' + (sched.date || '') + '</div></td></tr></table>'
-    + '<p style="margin-bottom:20px; font-size:18px;"><strong>Exam:</strong> ' + ex.title + '</p>'
-    + '<table width="100%" border="1" cellspacing="0" cellpadding="8" style="margin-bottom:20px; border-collapse:collapse; border:1px solid #ddd;">'
-    + '<tr style="background:#eee;"><th align="left">Task</th><th align="center">Score</th><th align="left">Feedback</th></tr>'
-    + tableRows + '</table>'
-    + '<table width="100%" border="0" cellspacing="0" cellpadding="15" style="background:#e8006e; color:#fff; border-radius:8px;">'
-    + '<tr><td><div style="font-size:10px; opacity:0.8;">OVERALL RESULT</div><div style="font-size:24px; font-weight:700;">' + resultText + '</div></td>'
-    + '<td align="right"><div style="font-size:10px; opacity:0.8;">TOTAL SCORE</div><div style="font-size:24px; font-weight:700;">' + totalScore + ' / ' + totalMax + '</div></td></tr>'
-    + '</table>';
-
-  container.innerHTML = contentHtml;
-  document.body.appendChild(container);
-
-  var opt = {
-    margin: 0.5,
-    filename: 'Report_' + name.replace(/\s+/g,'_') + '.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.5, useCORS: true, logging: true },
-    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-  };
-
-  alert('Generating Report Card...');
-  setTimeout(function() {
-    html2pdf().set(opt).from(container).save().then(function() {
-      document.body.removeChild(container);
-      alert('PDF created successfully!');
-    }).catch(function(err) {
-      alert('Error during PDF save: ' + err.message);
-      document.body.removeChild(container);
-    });
-  }, 1000);
+  doc.save('Report_' + name.replace(/\s+/g, '_') + '.pdf');
 }
 
 
