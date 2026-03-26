@@ -4278,11 +4278,10 @@ async function downloadResultPDF(examCode) {
 
   var container = document.createElement('div');
   container.id = 'temp-pdf-report';
-  // Standard Arial/sans-serif to avoid font-load issues.
-  // Move it way off to the right but keep it in the flow for renderer
-  container.style.cssText = 'padding:40px; font-family:Arial, sans-serif; width:700px; background:#fff; color:#2d2d2d; position:fixed; left:5000px; top:0; z-index:-10000;';
+  // Standard Arial/sans-serif. Visible but behind with low z-index.
+  container.style.cssText = 'padding:40px; font-family:Arial, sans-serif; width:700px; background:#fff; color:#2d2d2d; position:absolute; left:0; top:0; z-index:-1; opacity:1;';
 
-  container.innerHTML = 
+  var contentHtml = 
     '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:20px; border-bottom:2px solid #e8006e;">'
     + '<tr><td style="padding-bottom:15px;"><h1 style="margin:0; color:#e8006e; font-size:24px;">Official Score Report</h1></td>'
     + '<td align="right" style="padding-bottom:15px;"><img src="' + logoSrc + '" height="40" style="display:block;"></td></tr></table>'
@@ -4298,20 +4297,14 @@ async function downloadResultPDF(examCode) {
     + '<td align="right"><div style="font-size:10px; opacity:0.8;">TOTAL SCORE</div><div style="font-size:24px; font-weight:700;">' + totalScore + ' / ' + totalMax + '</div></td></tr>'
     + '</table>';
 
+  container.innerHTML = contentHtml;
   document.body.appendChild(container);
-
-  // VALIDATION: Check if content actually exists
-  if (!container.innerText || container.innerText.trim().length < 20) {
-    alert('Debug Error: Report content is empty or failed to build. Score was: ' + totalScore);
-    document.body.removeChild(container);
-    return;
-  }
 
   var opt = {
     margin: 0.5,
     filename: 'Report_' + name.replace(/\s+/g,'_') + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.5, useCORS: true, logging: false },
+    html2canvas: { scale: 1.5, useCORS: true, logging: true },
     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
