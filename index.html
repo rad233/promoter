@@ -1787,33 +1787,28 @@ function renderTask(n){
 
   if(n===0){
     var h='<div class="task-card">';
-    if(S.pdfDoc){
-      h+='<div class="pdf-page-wrap"><canvas id="pdf-canvas-0"></canvas></div>';
+    var _iex = S.activeExamCode && S.exams[S.activeExamCode] ? S.exams[S.activeExamCode] : null;
+    var _ititle = _iex ? _iex.title : 'English Exam';
+    var _iinfo  = _iex && _iex.info ? _iex.info : '';
+    var _idur   = _iex ? (_iex.duration||150) : 150;
+    var _idh    = Math.floor(_idur/60), _idm = _idur%60;
+    var _idurStr = (_idh>0?_idh+' hour'+(_idh!==1?'s ':' '):'')+(_idm>0?_idm+' min':'');
+    var _iparsedIntro = S.parsedExam && S.parsedExam.introText ? S.parsedExam.introText : '';
+    h += '<div style="padding:24px 20px;">';
+    h += '<div style="font-size:22px;font-weight:700;margin-bottom:12px;">'+_ititle+'</div>';
+    if (_iparsedIntro) {
+      h += '<div style="font-size:14px;line-height:1.9;color:#444;white-space:pre-wrap;">'+_iparsedIntro+'</div>';
     } else {
-      var _iex = S.activeExamCode && S.exams[S.activeExamCode] ? S.exams[S.activeExamCode] : null;
-      var _ititle = _iex ? _iex.title : 'English Exam';
-      var _iinfo  = _iex && _iex.info ? _iex.info : '';
-      var _idur   = _iex ? (_iex.duration||150) : 150;
-      var _idh    = Math.floor(_idur/60), _idm = _idur%60;
-      var _idurStr = (_idh>0?_idh+' hour'+(_idh!==1?'s ':' '):'')+(_idm>0?_idm+' min':'');
-      var _iparsedIntro = S.parsedExam && S.parsedExam.introText ? S.parsedExam.introText : '';
-      h += '<div style="padding:24px 20px;">';
-      h += '<div style="font-size:22px;font-weight:700;margin-bottom:12px;">'+_ititle+'</div>';
-      if (_iparsedIntro) {
-        h += '<div style="font-size:14px;line-height:1.9;color:#444;white-space:pre-wrap;">'+_iparsedIntro+'</div>';
-      } else {
-        h += '<div style="background:var(--gray-50);border-radius:10px;padding:14px 16px;font-size:13px;line-height:2;margin-bottom:12px;">';
-        h += '<div><strong>Duration:</strong> '+_idurStr+'</div>';
-        if (_iinfo) h += '<div style="margin-top:8px;">'+_iinfo+'</div>';
-        h += '</div>';
-      }
+      h += '<div style="background:var(--gray-50);border-radius:10px;padding:14px 16px;font-size:13px;line-height:2;margin-bottom:12px;">';
+      h += '<div><strong>Duration:</strong> '+_idurStr+'</div>';
+      if (_iinfo) h += '<div style="margin-top:8px;">'+_iinfo+'</div>';
       h += '</div>';
     }
+    h += '</div>';
     h+='</div><div class="exam-nav-btns">'
       +'<button class="geo-btn geo-btn-pink" onclick="gotoTask(1)">\u10D2\u10D0\u10DB\u10DD\u10EA\u10D3\u10D8\u10E1 \u10D3\u10D0\u10EC\u10E7\u10D4\u10D1\u10D0 &rarr;</button>'
       +'</div>';
     main.innerHTML=h;
-    if(S.pdfDoc) renderPdfPage(1,'pdf-canvas-0');
     return;
   }
 
@@ -1852,7 +1847,6 @@ function renderTask(n){
 
   var h='<div class="task-card">';
   h+='<span class="task-badge">'+task.title+'</span><div class="task-pts">'+task.pts+' points</div>';
-  if(S.pdfDoc) h+='<div class="pdf-page-wrap"><canvas id="pdf-canvas-'+n+'"></canvas></div>';
 
   if(task.type==='listening'){
     h+='<p class="task-instr">'+(task.instructions||'Listen and mark the correct answer A, B, C or D.')+'</p>';
@@ -2062,7 +2056,6 @@ function renderTask(n){
   h+='</div>';
 
   main.innerHTML=h;
-  if(S.pdfDoc) renderPdfPage(n+1,'pdf-canvas-'+n);
   if(task && task.type==='gapfill4') { setTimeout(initDragDrop, 50); }
   if(task.type==='essay'||task.type==='writing'){
     var _taId='essay-ta-'+n;
@@ -2243,7 +2236,6 @@ function showSec(name){
   if(name==='students') refreshStudentsTable();
   if(name==='codes') refreshCodesTable();
   if(name==='results') renderResultsTable();
-  if(name==='schedule') renderSchedTable();
 }
 
 function renderSchedTable(){
@@ -4033,6 +4025,7 @@ function renderTaskList() {
       + '<div style="font-weight:700;font-size:14px;">' + (stName||stEmail) + '</div>'
       + '<div style="font-size:12px;color:var(--gray-500);">' + ex.title + ' &middot; ' + (comp.elapsedStr||'') + '</div>'
       + '</div>'
+      + '<button class="card-btn" onclick="downloadResultPDF(\'' + exCode + '\',\'' + stEmail + '\',\'' + (stName||stEmail).replace(/'/g, "\\'") + '\')" style="padding:6px 12px;font-size:11px;min-width:auto;margin:0;">Download PDF</button>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">';
 
@@ -4234,15 +4227,16 @@ function showTaskFeedback(examCode, taskKey) {
   modal.classList.add('open');
 }
 
-async function downloadResultPDF(examCode) {
+async function downloadResultPDF(examCode, targetEmail, targetName) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('PDF library not fully loaded. Please refresh the page.');
     return;
   }
   
-  var student = S.student;
-  var email = student.email;
-  var name  = student.name;
+  var email = targetEmail || (S.student ? S.student.email : null);
+  var name  = targetName  || (S.student ? S.student.name : (email || 'Student'));
+  if (!email) { alert('No student selected'); return; }
+
   var ex    = S.exams[examCode];
   var sched = S.schedule && S.schedule[examCode];
   if (!ex || !sched) { alert('Data missing'); return; }
@@ -4276,6 +4270,25 @@ async function downloadResultPDF(examCode) {
   doc.line(margin, y + 18, 190, y + 18);
   y += 30;
 
+  var drawUtf8Text = function(txt, x, y, size, color, bold) {
+    if (!txt) return 0;
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var scale = 4;
+    var font = (bold ? 'bold ' : '') + (size * scale) + 'px Georgia, Sylfaen, serif';
+    ctx.font = font;
+    var m = ctx.measureText(txt);
+    canvas.width = m.width + (2*scale);
+    canvas.height = (size * 1.5) * scale;
+    ctx.font = font;
+    ctx.fillStyle = color || '#000000';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, 1*scale, (canvas.height/2));
+    var imgData = canvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', x, y, canvas.width/scale, canvas.height/scale);
+    return canvas.height/scale;
+  };
+
   // Student Info Box
   doc.setFillColor(245, 245, 245);
   doc.rect(margin, y, 170, 30, 'F');
@@ -4288,7 +4301,7 @@ async function downloadResultPDF(examCode) {
   
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(13);
-  doc.text(name, margin + 8, y + 20);
+  drawUtf8Text(name, margin + 8, y + 15, 13, '#000000', true);
   doc.setFontSize(11);
   doc.text(sched.date || '-', margin + 95, y + 20);
   y += 45;
@@ -4299,7 +4312,7 @@ async function downloadResultPDF(examCode) {
   doc.text('EXAMINATION TITLE', margin, y);
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(16);
-  doc.text(ex.title, margin, y + 8);
+  drawUtf8Text(ex.title, margin, y + 3, 16, '#000000', true);
   y += 20;
 
   // Table Title
@@ -4338,11 +4351,24 @@ async function downloadResultPDF(examCode) {
       doc.text(tGrade.score + ' / ' + tGrade.max, margin + 55, y + 5);
       
       var fb = tGrade.feedback || 'No feedback';
-      var fbLines = doc.splitTextToSize(fb, 85);
-      doc.setTextColor(80, 80, 80);
-      doc.text(fbLines, margin + 85, y + 5);
+      var words = fb.split(/\s+/);
+      var lines = []; var curL = '';
+      var testC = document.createElement('canvas'); var testCtx = testC.getContext('2d');
+      testCtx.font = '36px Georgia, Sylfaen, serif';
+      for(var wi=0;wi<words.length;wi++){
+        var testLine = curL + (curL?' ':'') + words[wi];
+        if(testCtx.measureText(testLine).width/4 > 85 && wi>0){ lines.push(curL); curL=words[wi]; }
+        else { curL=testLine; }
+      }
+      if(curL) lines.push(curL);
+
+      var fbY = y + 1.5;
+      for(var li=0;li<lines.length;li++){
+        drawUtf8Text(lines[li], margin + 85, fbY, 9, '#505050', false);
+        fbY += 5;
+      }
       
-      var rowHeight = Math.max(10, fbLines.length * 5);
+      var rowHeight = Math.max(10, lines.length * 5 + 2);
       doc.setDrawColor(240, 240, 240);
       doc.line(margin, y + rowHeight - 2, 190, y + rowHeight - 2);
       y += rowHeight;
@@ -4858,7 +4884,7 @@ function renderSchedTable(){
     var dur=sc.duration||150; var dh=Math.floor(dur/60),dm=dur%60;
     var durStr=(dh>0?dh+'h ':'')+dm+'min';
     var bdg=status==='live'?'<span class="bdg bdg-green">Live</span>':status==='upcoming'?'<span class="bdg bdg-orange">Upcoming</span>':'<span class="bdg" style="background:var(--gray-100);color:var(--gray-600);">Ended</span>';
-    rows+='<tr><td><strong>'+(ex?ex.title:code)+'</strong></td><td><span class="code-tag">'+code+'</span></td><td>'+(sc.date||'-')+'</td><td>'+(sc.time||'-')+'</td><td>'+durStr+'</td><td>'+bdg+'</td><td><button class="abtn abtn-ghost" style="padding:3px 10px;font-size:11px;" onclick="openExamEdit(\'+code+\')">'+(status==='live'?'Manage':status==='ended'?'Renew':'Edit')+'</button></td></tr>';
+    rows+='<tr><td><strong>'+(ex?ex.title:code)+'</strong></td><td><span class="code-tag">'+code+'</span></td><td>'+(sc.date||'-')+'</td><td>'+(sc.time||'-')+'</td><td>'+durStr+'</td><td>'+bdg+'</td><td><button class="abtn abtn-ghost" style="padding:3px 10px;font-size:11px;" onclick="openExamEdit(\''+code+'\')">'+(status==='live'?'Manage':status==='ended'?'Renew':'Edit')+'</button></td></tr>';
   });
   tbody.innerHTML=rows;
 }
