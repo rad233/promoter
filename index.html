@@ -6987,7 +6987,7 @@
         // Load Noto Sans Georgian font for Georgian text support
         var geoFontName = 'NotoSansGeorgian';
         try {
-          var fontUrl = 'https://fonts.gstatic.com/s/notosansgeorgian/v43/PlIaFke5O6RzLfvNNVSivR09_KqYMgz8D5NWn-AoEDmMJA.woff2';
+          var fontUrl = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/unhinted/ttf/NotoSansGeorgian/NotoSansGeorgian-Regular.ttf';
           var fontResp = await fetch(fontUrl);
           if (fontResp.ok) {
             var fontBuf = await fontResp.arrayBuffer();
