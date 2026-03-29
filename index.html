@@ -7040,7 +7040,7 @@
 
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
-        drawUtf8Text(name, margin + 8, y + 13, 11, '#000000', false);
+        drawUtf8Text(name, margin + 8, y + 15, 7, '#000000', false);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
         doc.text(sched.date || '-', margin + 95, y + 20);
@@ -7053,7 +7053,7 @@
         doc.text('EXAMINATION TITLE', margin, y);
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
-        drawUtf8Text(ex.title, margin, y + 3, 11, '#000000', true);
+        drawUtf8Text(ex.title, margin, y + 3, 7, '#000000', false);
         y += 20;
 
         // Table Title
@@ -7095,7 +7095,7 @@
             var words = fb.split(/\s+/);
             var lines = []; var curL = '';
             var testC = document.createElement('canvas'); var testCtx = testC.getContext('2d');
-            testCtx.font = '44px Georgia, Sylfaen, serif';
+            testCtx.font = '28px Georgia, Sylfaen, serif';
             for (var wi = 0; wi < words.length; wi++) {
               var testLine = curL + (curL ? ' ' : '') + words[wi];
               if (testCtx.measureText(testLine).width / 4 > 85 && wi > 0) { lines.push(curL); curL = words[wi]; }
@@ -7105,8 +7105,8 @@
 
             var fbY = y + 1.5;
             for (var li = 0; li < lines.length; li++) {
-              drawUtf8Text(lines[li], margin + 85, fbY, 11, '#505050', false);
-              fbY += 6;
+              drawUtf8Text(lines[li], margin + 85, fbY, 7, '#505050', false);
+              fbY += 5;
             }
 
             var rowHeight = Math.max(10, lines.length * 5 + 2);
