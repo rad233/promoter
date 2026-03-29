@@ -6984,6 +6984,19 @@
         var margin = 20;
         var y = margin;
 
+        // Load Noto Sans Georgian font for Georgian text support
+        var geoFontName = 'NotoSansGeorgian';
+        try {
+          var fontUrl = 'https://fonts.gstatic.com/s/notosansgeorgian/v43/PlIaFke5O6RzLfvNNVSivR09_KqYMgz8D5NWn-AoEDmMJA.woff2';
+          var fontResp = await fetch(fontUrl);
+          if (fontResp.ok) {
+            var fontBuf = await fontResp.arrayBuffer();
+            var fontBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(fontBuf)));
+            doc.addFileToVFS(geoFontName + '.ttf', fontBase64);
+            doc.addFont(geoFontName + '.ttf', geoFontName, 'normal');
+          } else { geoFontName = 'helvetica'; }
+        } catch(e) { geoFontName = 'helvetica'; }
+
         // Header - Manual Drawing
         doc.setTextColor(232, 0, 110);
         var logoImg = document.querySelector('.auth-logo img');
@@ -7009,25 +7022,6 @@
         doc.line(margin, y + 18, 190, y + 18);
         y += 30;
 
-        var drawUtf8Text = function (txt, x, y, size, color, bold) {
-          if (!txt) return 0;
-          var canvas = document.createElement('canvas');
-          var ctx = canvas.getContext('2d');
-          var scale = 4;
-          var font = (bold ? 'bold ' : '') + (size * scale) + 'px Georgia, Sylfaen, serif';
-          ctx.font = font;
-          var m = ctx.measureText(txt);
-          canvas.width = m.width + (2 * scale);
-          canvas.height = (size * 1.5) * scale;
-          ctx.font = font;
-          ctx.fillStyle = color || '#000000';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(txt, 1 * scale, (canvas.height / 2));
-          var imgData = canvas.toDataURL('image/png');
-          doc.addImage(imgData, 'PNG', x, y, canvas.width / scale, canvas.height / scale);
-          return canvas.height / scale;
-        };
-
         // Student Info Box
         doc.setFillColor(245, 245, 245);
         doc.rect(margin, y, 170, 30, 'F');
@@ -7040,8 +7034,8 @@
 
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
-        drawUtf8Text(name, margin + 8, y + 15, 7, '#000000', false);
-        doc.setFontSize(11);
+        doc.setFont(geoFontName, 'normal');
+        doc.text(name, margin + 8, y + 20);
         doc.setFont('helvetica', 'normal');
         doc.text(sched.date || '-', margin + 95, y + 20);
         y += 45;
@@ -7053,7 +7047,8 @@
         doc.text('EXAMINATION TITLE', margin, y);
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
-        drawUtf8Text(ex.title, margin, y + 3, 7, '#000000', false);
+        doc.setFont(geoFontName, 'normal');
+        doc.text(ex.title, margin, y + 8);
         y += 20;
 
         // Table Title
@@ -7092,24 +7087,18 @@
             doc.text(tGrade.score + ' / ' + tGrade.max, margin + 55, y + 5);
 
             var fb = tGrade.feedback || 'No feedback';
-            var words = fb.split(/\s+/);
-            var lines = []; var curL = '';
-            var testC = document.createElement('canvas'); var testCtx = testC.getContext('2d');
-            testCtx.font = '28px Georgia, Sylfaen, serif';
-            for (var wi = 0; wi < words.length; wi++) {
-              var testLine = curL + (curL ? ' ' : '') + words[wi];
-              if (testCtx.measureText(testLine).width / 4 > 85 && wi > 0) { lines.push(curL); curL = words[wi]; }
-              else { curL = testLine; }
-            }
-            if (curL) lines.push(curL);
+            doc.setFontSize(9);
+            doc.setFont(geoFontName, 'normal');
+            doc.setTextColor(80, 80, 80);
+            var lines = doc.splitTextToSize(fb, 85);
 
-            var fbY = y + 1.5;
+            var fbY = y + 5;
             for (var li = 0; li < lines.length; li++) {
-              drawUtf8Text(lines[li], margin + 85, fbY, 7, '#505050', false);
-              fbY += 5;
+              doc.text(lines[li], margin + 85, fbY);
+              fbY += 4.5;
             }
 
-            var rowHeight = Math.max(10, lines.length * 5 + 2);
+            var rowHeight = Math.max(10, lines.length * 4.5 + 2);
             doc.setDrawColor(240, 240, 240);
             doc.line(margin, y + rowHeight - 2, 190, y + rowHeight - 2);
             y += rowHeight;
