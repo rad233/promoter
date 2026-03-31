@@ -6551,8 +6551,12 @@
         var count = countEl ? (parseInt(countEl.value) || 30) : 30;
         window._ebGeneratedIDs = [];
         for (var i = 1; i <= count; i++) {
-          var num = i < 10 ? '00' + i : i < 100 ? '0' + i : '' + i;
-          window._ebGeneratedIDs.push(prefix + '-' + num);
+          var r, id;
+          do {
+            r = Math.floor(1000 + Math.random() * 9000);
+            id = prefix + '-' + r;
+          } while (window._ebGeneratedIDs.indexOf(id) !== -1);
+          window._ebGeneratedIDs.push(id);
         }
         // Show count label
         var countLabel = document.getElementById('exam-ids-count-label');
