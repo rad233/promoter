@@ -7009,19 +7009,24 @@
           if (!txt) return 0;
           var canvas = document.createElement('canvas');
           var ctx = canvas.getContext('2d');
-          var scale = 4;
-          var font = (bold ? 'bold ' : '') + (size * scale) + 'px Georgia, Sylfaen, serif';
+          var scale = 8;
+          var ptToPx = 96 / 72;
+          var pxToMm = 25.4 / 96;
+          var fontSizePx = size * ptToPx;
+          var font = (bold ? 'bold ' : 'normal ') + Math.round(fontSizePx * scale) + 'px Georgia, Sylfaen, serif';
           ctx.font = font;
           var m = ctx.measureText(txt);
-          canvas.width = m.width + (2 * scale);
-          canvas.height = (size * 1.5) * scale;
+          canvas.width = m.width + (4 * scale);
+          canvas.height = (fontSizePx * 1.4) * scale;
           ctx.font = font;
           ctx.fillStyle = color || '#000000';
           ctx.textBaseline = 'middle';
-          ctx.fillText(txt, 1 * scale, (canvas.height / 2));
+          ctx.fillText(txt, 2 * scale, (canvas.height / 2));
           var imgData = canvas.toDataURL('image/png');
-          doc.addImage(imgData, 'PNG', x, y, canvas.width / scale, canvas.height / scale);
-          return canvas.height / scale;
+          var renderW = (canvas.width / scale) * pxToMm;
+          var renderH = (canvas.height / scale) * pxToMm;
+          doc.addImage(imgData, 'PNG', x, y, renderW, renderH);
+          return renderH;
         };
 
         // Student Info Box
@@ -7089,10 +7094,11 @@
             var words = fb.split(/\s+/);
             var lines = []; var curL = '';
             var testC = document.createElement('canvas'); var testCtx = testC.getContext('2d');
-            testCtx.font = '36px Georgia, Sylfaen, serif';
+            var pxToMm = 25.4 / 96;
+            testCtx.font = 'normal 12px Georgia, Sylfaen, serif';
             for (var wi = 0; wi < words.length; wi++) {
               var testLine = curL + (curL ? ' ' : '') + words[wi];
-              if (testCtx.measureText(testLine).width / 4 > 85 && wi > 0) { lines.push(curL); curL = words[wi]; }
+              if (testCtx.measureText(testLine).width * pxToMm > 85 && wi > 0) { lines.push(curL); curL = words[wi]; }
               else { curL = testLine; }
             }
             if (curL) lines.push(curL);
@@ -7624,6 +7630,14 @@
         tbody.innerHTML = rows;
       }
 
+      // Prevent copy, cut, paste, and context menu (right-click / long press) while an exam is active
+      ['copy', 'cut', 'paste', 'contextmenu'].forEach(function(evt) {
+        document.addEventListener(evt, function(e) {
+          if (document.body.classList.contains('exam-active')) {
+            e.preventDefault();
+          }
+        });
+      });
     </script>
 </body>
 
