@@ -3830,7 +3830,9 @@
     </div>
 
     <script>
+      alert("DEBUG: SCRIPT IS RUNNING");
       // EMERGENCY RESET SYSTEM - Runs first!
+
       function checkRecovery() {
         if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
           var modal = document.getElementById('modal-reset-pw');
