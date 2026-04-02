@@ -7791,12 +7791,14 @@
 
       // Handle Supabase Auth redirects (like Password Reset)
       function checkRecovery() {
-        if (window.location.hash && window.location.hash.includes('type=recovery')) {
+        console.log("Checking URL Hash:", window.location.hash);
+        if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
+          console.log("Recovery token detected! Opening modal...");
           var modal = document.getElementById('modal-reset-pw');
           if (modal) {
             modal.classList.add('open');
-            modal.style.display = 'flex'; // Force display just in case
-            modal.style.zIndex = '999999'; // Ensure it's on top
+            modal.style.display = 'flex';
+            modal.style.zIndex = '9999999';
             setTimeout(function() {
               var input = document.getElementById('rp-pw');
               if (input) input.focus();
