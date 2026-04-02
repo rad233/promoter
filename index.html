@@ -3830,6 +3830,29 @@
     </div>
 
     <script>
+      // EMERGENCY RESET SYSTEM - Runs first!
+      function checkRecovery() {
+        if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
+          var modal = document.getElementById('modal-reset-pw');
+          if (modal) {
+            modal.classList.add('open');
+            modal.style.display = 'flex';
+            modal.style.zIndex = '9999999';
+          }
+        }
+      }
+      // Run now
+      checkRecovery();
+      // Run on hash change
+      window.addEventListener('hashchange', checkRecovery);
+      // Run on Shift+P
+      document.addEventListener('keydown', function(e) {
+        if (e.shiftKey && e.key === 'P') {
+          var modal = document.getElementById('modal-reset-pw');
+          if (modal) { modal.classList.add('open'); modal.style.display = 'flex'; modal.style.zIndex = '9999999'; }
+        }
+      });
+
 
       function selAns(tn, q, letter, el) {
         var key = 't' + tn;
