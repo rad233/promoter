@@ -3964,6 +3964,7 @@
         if (ao) { ao.classList.remove('open'); }
         var overlays = document.querySelectorAll('.overlay');
         for (var j = 0; j < overlays.length; j++) {
+          if (overlays[j].id === 'modal-reset-pw' && overlays[j].classList.contains('open')) continue;
           overlays[j].classList.remove('open');
           overlays[j].style.display = '';
         }
@@ -7794,14 +7795,18 @@
           var modal = document.getElementById('modal-reset-pw');
           if (modal) {
             modal.classList.add('open');
-            // Force focus on password field
+            modal.style.display = 'flex'; // Force display just in case
+            modal.style.zIndex = '999999'; // Ensure it's on top
             setTimeout(function() {
               var input = document.getElementById('rp-pw');
               if (input) input.focus();
-            }, 100);
+            }, 200);
+          } else {
+            alert("Error: Modal element 'modal-reset-pw' not found in page!");
           }
         }
       }
+
 
       window.addEventListener('load', function() {
         checkRecovery();
