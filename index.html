@@ -7789,17 +7789,30 @@
       });
 
       // Handle Supabase Auth redirects (like Password Reset)
-      window.addEventListener('load', function() {
+      function checkRecovery() {
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
-          setTimeout(function() {
-            var modal = document.getElementById('modal-reset-pw');
-            if (modal) modal.classList.add('open');
-          }, 500);
+          var modal = document.getElementById('modal-reset-pw');
+          if (modal) {
+            modal.classList.add('open');
+            // Force focus on password field
+            setTimeout(function() {
+              var input = document.getElementById('rp-pw');
+              if (input) input.focus();
+            }, 100);
+          }
         }
+      }
+
+      window.addEventListener('load', function() {
+        checkRecovery();
         // Initialize data
         if (typeof loadAllData === 'function') loadAllData();
       });
+
+      // Also check on hash change (in case the student is already on the page)
+      window.addEventListener('hashchange', checkRecovery);
     </script>
+
 
 </body>
 
