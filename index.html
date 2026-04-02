@@ -3808,7 +3808,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Reset Password Modal -->
+    <div id="modal-reset-pw" class="overlay">
+      <div class="modal">
+        <h3>Set New Password</h3>
+        <p>Enter a new secure password for your account.</p>
+        <div id="rp-err" class="err-msg"></div>
+        <div class="fg">
+          <label>New Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="rp-pw" placeholder="••••••••">
+            <button type="button" class="pw-eye" onclick="togglePw('rp-pw', this)">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="modal-btns">
+          <button class="btn-auth" onclick="handleResetPassword()" style="margin-top:0;">Update Password</button>
+        </div>
+      </div>
+    </div>
+
     <script>
+
       function selAns(tn, q, letter, el) {
         var key = 't' + tn;
         if (!S.answers[key]) S.answers[key] = {};
@@ -7388,8 +7410,10 @@
           var students = await dbGet('students');
           S.regCodes = {};
           students.forEach(function (s) {
-            S.regCodes[s.reg_code] = { name: s.name, email: s.email, phone: s.phone || '', pw: s.password, activated: s.activated, id: s.student_id || '' };
+            // SECURITY: We no longer store the password (s.password) in the frontend state
+            S.regCodes[s.reg_code] = { name: s.name, email: s.email, phone: s.phone || '', activated: s.activated, id: s.student_id || '' };
           });
+
           var exams = await dbGet('exams');
           S.exams = {}; S.examCodes = {};
           exams.forEach(function (e) {
@@ -7455,6 +7479,95 @@
         renderSchedTable();
         updateAdminDashboard();
       }
+
+      // ── Student Auth ─────────────────────────────────────────────────────────────
+      async function doLogin() {
+        var email = document.getElementById('li-code').value.trim().toLowerCase();
+        var pw = document.getElementById('li-pw').value;
+        var err = document.getElementById('login-err');
+        if (!err) return;
+        err.style.display = 'none';
+        if (!email) { err.textContent = 'Please enter your email address.'; err.style.display = 'block'; return; }
+
+        const { data, error } = await sb.auth.signInWithPassword({ email: email, password: pw });
+
+        if (!error && data.user) {
+          var rows = await dbGet('students', { email: email });
+          if (rows.length) {
+            S.student = { name: rows[0].name, email: rows[0].email, phone: rows[0].phone || '', activated: true, id: rows[0].student_id || '' };
+          }
+          await loadAllData();
+          if (typeof enterDash === 'function') enterDash();
+          return;
+        }
+
+        // Silent Migration Fallback
+        var oldRows = await dbGet('students', { email: email });
+        if (oldRows.length && oldRows[0].activated && oldRows[0].password === pw) {
+          const { data: mData, error: mErr } = await sb.auth.signUp({
+            email: email, password: pw,
+            options: { data: { full_name: oldRows[0].name, student_id: oldRows[0].student_id || '' } }
+          });
+          if (!mErr) {
+            S.student = { name: oldRows[0].name, email: oldRows[0].email, phone: oldRows[0].phone || '', activated: true, id: oldRows[0].student_id || '' };
+            await loadAllData();
+            if (typeof enterDash === 'function') enterDash();
+            return;
+          }
+        }
+        err.textContent = error ? error.message : 'Incorrect email or password.';
+        err.style.display = 'block';
+      }
+
+      async function doSignup() {
+        var code = document.getElementById('su-code').value.trim();
+        var name = document.getElementById('su-name').value.trim();
+        var email = document.getElementById('su-email').value.trim().toLowerCase();
+        var phone = document.getElementById('su-phone') ? document.getElementById('su-phone').value.trim() : '';
+        var pw = document.getElementById('su-pw').value;
+        var err = document.getElementById('signup-err');
+        if (!err) return;
+        err.style.display = 'none';
+        if (!name || !email || !pw || !code) { err.textContent = 'Please fill in all required fields.'; err.style.display = 'block'; return; }
+
+        var rows = await dbGet('students', { reg_code: code });
+        if (!rows.length) { err.textContent = 'Invalid activation code.'; err.style.display = 'block'; return; }
+        if (rows[0].activated) { err.textContent = 'This code has already been used.'; err.style.display = 'block'; return; }
+
+        const { data, error } = await sb.auth.signUp({
+          email: email, password: pw,
+          options: { data: { full_name: name, student_id: rows[0].student_id || '' } }
+        });
+
+        if (error) { err.textContent = error.message; err.style.display = 'block'; return; }
+
+        await dbUpdate('students', { name: name, email: email, phone: phone, activated: true }, { reg_code: code });
+        S.student = { name: name, email: email, phone: phone, activated: true, id: rows[0].student_id || '' };
+        if (typeof enterDash === 'function') enterDash();
+      }
+
+      async function sendReset(method) {
+        var val = method === 'email' ? document.getElementById('fp-email').value.trim() : document.getElementById('fp-phone').value.trim();
+        if (!val) { showToast('Please enter your ' + (method === 'email' ? 'email address' : 'phone number'), ''); return; }
+        if (method === 'phone') { showToast('Phone reset is not supported yet. Please use email.', ''); return; }
+        const { error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), { redirectTo: window.location.origin + window.location.pathname });
+        if (error) { showToast(error.message, ''); return; }
+        var msgEl = document.getElementById('fp-success-msg');
+        if (msgEl) msgEl.innerHTML = 'A password reset link has been sent to your email.';
+        var fps = document.getElementById('fp-success'); if (fps) fps.classList.add('show');
+      }
+
+      async function handleResetPassword() {
+        var pw = document.getElementById('rp-pw').value;
+        var err = document.getElementById('rp-err');
+        if (!err) return;
+        err.style.display = 'none';
+        if (!pw || pw.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; return; }
+        const { error } = await sb.auth.updateUser({ password: pw });
+        if (error) { err.textContent = error.message; err.style.display = 'block'; }
+        else { showToast('Password updated!', 'success'); closeOverlay('modal-reset-pw'); window.location.hash = ''; if (typeof enterDash === 'function') enterDash(); }
+      }
+
 
       function updateAdminDashboard() {
         // Students
@@ -7638,11 +7751,56 @@
       ['copy', 'cut', 'paste', 'contextmenu'].forEach(function(evt) {
         document.addEventListener(evt, function(e) {
           if (document.body.classList.contains('exam-active')) {
+            // Allow paste in essay
+            var target = e.target;
+            if (evt === 'paste' && target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) return;
             e.preventDefault();
           }
         });
       });
+
+      // Block specific keyboard shortcuts during active exams
+      document.addEventListener('keydown', function(e) {
+        if (!document.body.classList.contains('exam-active')) return;
+        
+        // Block F12 (Developer Tools)
+        if (e.code === 'F12' || e.key === 'F12') { e.preventDefault(); e.stopPropagation(); return false; }
+        
+        // Block Ctrl+Shift+I, J, C (Developer Tools)
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+          var k = e.key ? e.key.toLowerCase() : '';
+          if (k === 'i' || k === 'j' || k === 'c') { e.preventDefault(); e.stopPropagation(); return false; }
+        }
+        
+        if (e.ctrlKey || e.metaKey) {
+          var k = e.key ? e.key.toLowerCase() : '';
+          // Block printing (p), saving (s), view source (u)
+          if (k === 'p' || k === 's' || k === 'u') { e.preventDefault(); e.stopPropagation(); return false; }
+          // Block copy (c), cut (x), select all (a), paste (v)
+          if (k === 'c' || k === 'x' || k === 'a' || k === 'v') {
+            var target = e.target;
+            // Allow select all / paste inside textareas or input fields
+            if ((k === 'a' || k === 'v') && target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        }
+      });
+
+      // Handle Supabase Auth redirects (like Password Reset)
+      window.addEventListener('load', function() {
+        if (window.location.hash && window.location.hash.includes('type=recovery')) {
+          setTimeout(function() {
+            var modal = document.getElementById('modal-reset-pw');
+            if (modal) modal.classList.add('open');
+          }, 500);
+        }
+        // Initialize data
+        if (typeof loadAllData === 'function') loadAllData();
+      });
     </script>
+
 </body>
 
 </html>
