@@ -4145,9 +4145,7 @@
       }
 
       function _blockPasteExceptEssay(e) {
-        // Allow paste only inside the essay textarea
-        var target = e.target;
-        if (target && (target.id === 'essay-ta' || target.classList.contains('essay-ta'))) return;
+        // Block paste everywhere during exam (no exceptions)
         e.preventDefault();
         e.stopPropagation();
         return false;
@@ -4166,9 +4164,7 @@
             return false;
           }
           if (key === 'v') {
-            // Allow Ctrl+V only inside essay textarea
-            var target2 = e.target;
-            if (target2 && (target2.id === 'essay-ta' || target2.classList.contains('essay-ta'))) return;
+            // Block Ctrl+V (paste) everywhere during exam
             e.preventDefault();
             e.stopPropagation();
             return false;
@@ -4642,12 +4638,29 @@
                 _runExamTimer(_examCode, startLeft);
               }
             } else {
+              // No timer_state in Supabase — use localStorage to restore elapsed time on refresh
+              try {
+                var _ls = JSON.parse(localStorage.getItem('ep_ts_' + _examCode) || 'null');
+                if (_ls && _ls.at && _ls.dur && S.student && _ls.email === S.student.email) {
+                  startLeft = Math.max(0, _ls.dur - Math.floor((Date.now() - _ls.at) / 1000));
+                }
+              } catch (_) {}
               _runExamTimer(_examCode, startLeft);
             }
           });
         } else {
           // First entry — calculate time from schedule start (timer is shared for all students)
           S.examStartTime = Date.now();
+          // Save exam start time to localStorage so timer survives page refresh
+          if (S.student && S.student.email) {
+            try {
+              localStorage.setItem('ep_ts_' + _examCode, JSON.stringify({
+                at: S.examStartTime,
+                dur: _totalSecs,
+                email: S.student.email
+              }));
+            } catch (_) {}
+          }
           var sc3 = S.schedule && S.schedule[_examCode];
           if (sc3 && sc3.date && sc3.time) {
             var schedStart = new Date(sc3.date + 'T' + sc3.time + ':00').getTime();
@@ -7903,9 +7916,8 @@
       ['copy', 'cut', 'paste', 'contextmenu'].forEach(function(evt) {
         document.addEventListener(evt, function(e) {
           if (document.body.classList.contains('exam-active')) {
-            // Allow paste in essay
-            var target = e.target;
-            if (evt === 'paste' && target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) return;
+            // Block paste everywhere during exam (no exceptions)
+            if (evt === 'paste') { e.preventDefault(); return; }
             e.preventDefault();
           }
         });
@@ -7931,8 +7943,8 @@
           // Block copy (c), cut (x), select all (a), paste (v)
           if (k === 'c' || k === 'x' || k === 'a' || k === 'v') {
             var target = e.target;
-            // Allow select all / paste inside textareas or input fields
-            if ((k === 'a' || k === 'v') && target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+            // Allow select all inside textareas or input fields, but block paste everywhere
+            if (k === 'a' && target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
             e.preventDefault();
             e.stopPropagation();
             return false;
