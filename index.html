@@ -3985,13 +3985,13 @@
             el.style.background = '#f9f9f9';
           }
         }
-        var ao = document.getElementById('ann-overlay');
-        if (ao) { ao.classList.remove('open'); }
         var overlays = document.querySelectorAll('.overlay');
         for (var j = 0; j < overlays.length; j++) {
+          // EXCEPTION: Don't hide the reset password modal if it's currently open
           if (overlays[j].id === 'modal-reset-pw' && overlays[j].classList.contains('open')) continue;
+
           overlays[j].classList.remove('open');
-          overlays[j].style.display = '';
+          overlays[j].style.display = 'none';
         }
         // Enable exam protection when entering exam page, disable otherwise
         if (id === 'page-exam') {
@@ -7843,12 +7843,14 @@
 
 
       window.addEventListener('load', function() {
-        checkRecovery();
+        // Run with a tiny delay to ensure it wins against other page logic
+        setTimeout(function() {
+          checkRecovery();
+        }, 100);
         // Initialize data
         if (typeof loadAllData === 'function') loadAllData();
       });
 
-      // Also check on hash change (in case the student is already on the page)
       window.addEventListener('hashchange', checkRecovery);
     </script>
 
