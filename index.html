@@ -2916,6 +2916,25 @@
 </head>
 
 <body>
+  <script>
+    // English Promoter: Top-Priority Emergency Shortcut
+    console.log("English Promoter: Emergency Shortcut Initialized.");
+    document.addEventListener("keydown", function(e) {
+      if (e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
+        console.log("English Promoter: Shortcut Triggered.");
+        var m = document.getElementById("modal-reset-pw");
+        if (m) {
+          m.classList.add("open");
+          m.style.display = "flex";
+          m.style.zIndex = "2147483647"; // Max CSS Z-index
+          m.style.visibility = "visible";
+          m.style.opacity = "1";
+        } else {
+          console.error("English Promoter: modal-reset-pw not found.");
+        }
+      }
+    }, true);
+  </script>
   <!-- LOGIN / SIGNUP -->
   <div id="page-auth" class="page active auth-bg">
     <div class="auth-box">
@@ -4325,7 +4344,7 @@
 
         // Trigger Supabase Password Reset Email
         const { data, error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
-          redirectTo: window.location.origin + window.location.pathname,
+          redirectTo: window.location.href.split("?")[0].split("#")[0].replace("index.html", "").replace(/\/$/, "") + "/recovery.html",
         });
 
         if (error) {
