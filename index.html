@@ -752,6 +752,14 @@
       display: flex;
     }
 
+    /* Force visibility for the reset modal */
+    #modal-reset-pw.open {
+      display: flex !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      z-index: 9999999 !important;
+    }
+
     .modal {
       background: #fff;
       border-radius: var(--radius-lg);
@@ -3829,106 +3837,6 @@
       </div>
     </div>
 
-    <script>
-      // EMERGENCY RESET SYSTEM - Runs first!
-      function checkRecovery() {
-        var h = window.location.hash;
-        alert("DEBUG: CURRENT HASH IS: " + h);
-        console.log("DEBUG: Current Hash is: " + h);
-
-        if (h && (h.includes('type=recovery') || h.includes('access_token='))) {
-          var modal = document.getElementById('modal-reset-pw');
-          if (modal) {
-            alert("DEBUG: Recovery Token Detected! Showing Modal.");
-            modal.classList.add('open');
-            modal.style.display = 'flex';
-            modal.style.zIndex = '9999999';
-          } else {
-            alert("DEBUG: ERROR - Modal 'modal-reset-pw' not found!");
-          }
-        }
-      }
-
-      // Run now
-      checkRecovery();
-      // Run on hash change
-      window.addEventListener('hashchange', checkRecovery);
-      // Run on Shift+P
-      document.addEventListener('keydown', function(e) {
-        if (e.shiftKey && e.key === 'P') {
-          var modal = document.getElementById('modal-reset-pw');
-          if (modal) { modal.classList.add('open'); modal.style.display = 'flex'; modal.style.zIndex = '9999999'; }
-        }
-      });
-
-
-      function selAns(tn, q, letter, el) {
-        var key = 't' + tn;
-        if (!S.answers[key]) S.answers[key] = {};
-        S.answers[key][q] = letter;
-        // Update visual selection
-        var row = el.closest('.q-block');
-        if (row) {
-          var opts = row.querySelectorAll('.opt');
-          for (var i = 0; i < opts.length; i++) opts[i].className = 'opt';
-        }
-        el.className = 'opt sel';
-        // Sync sidebar
-        syncSidebar(tn, q, letter);
-      }
-
-
-      function safeCopy(text, successMsg) {
-        try {
-          var ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;font-size:16px;border:none;outline:none;';
-          ta.setAttribute('readonly', '');
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.setSelectionRange(0, 99999);
-          try { document.execCommand('copy'); } catch (e2) { }
-          document.body.removeChild(ta);
-          showToast(successMsg || 'Copied!', 'success');
-        } catch (e) {
-          showToast('Copy failed', '');
-        }
-      }
-
-
-
-      async function postAnnouncement(pin) {
-        var t = document.getElementById('ann-t');
-        var b = document.getElementById('ann-b');
-        if (!t || !b || !t.value.trim() || !b.value.trim()) { showToast('Please fill in both title and message', ''); return; }
-        var title = t.value.trim(), body = b.value.trim();
-        // Update student-facing announcement
-        var annTitle = document.getElementById('ann-title'), annBody = document.getElementById('ann-body');
-        if (annTitle) annTitle.textContent = title;
-        if (annBody) annBody.textContent = body;
-        // Pin on student dashboard if requested
-        if (pin) {
-          var pt = document.getElementById('pin-title'), pb = document.getElementById('pin-body');
-          if (pt) pt.textContent = title;
-          if (pb) pb.textContent = body;
-          var pa = document.getElementById('pinned-ann'); if (pa) pa.classList.add('show');
-        }
-        // Add to history
-        var h = document.getElementById('ann-history');
-        if (h) {
-          var d = document.createElement('div');
-          d.style.cssText = 'padding:12px;background:var(--gray-50);border-radius:8px;margin-bottom:8px;';
-          d.innerHTML = '<div style="font-weight:600;font-size:13px;">' + title + '</div>'
-            + '<div style="font-size:12px;color:var(--gray-600);margin-top:4px;">' + body + '</div>'
-            + (pin ? '<div style="margin-top:6px;"><span style="font-size:11px;color:var(--pink);font-weight:600;">PINNED</span></div>' : '');
-          h.insertBefore(d, h.firstChild);
-        }
-        // Save to Supabase
-        await dbInsert('announcements', { title: title, body: body, pinned: pin ? true : false });
-        t.value = ''; b.value = '';
-        showToast(pin ? 'Posted and pinned!' : 'Posted!', 'success');
-      }
-      // ── Supabase ─────────────────────────────────────────────────────────────────
       const SUPA_URL = 'https://ntqvzwztgcorgssxfvbf.supabase.co';
       const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
       const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -4087,38 +3995,6 @@
         document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
       }
 
-      async function doLogin() {
-        var email = document.getElementById('li-code').value.trim().toLowerCase();
-        var pw = document.getElementById('li-pw').value;
-        var err = document.getElementById('login-err');
-        err.style.display = 'none';
-        if (!email) { err.textContent = 'Please enter your email address.'; err.style.display = 'block'; return; }
-        var rows = await dbGet('students', { email: email });
-        if (!rows.length || !rows[0].activated) { err.textContent = 'No account found, or account not activated.'; err.style.display = 'block'; return; }
-        if (rows[0].password !== pw) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; return; }
-        S.student = { name: rows[0].name, email: rows[0].email, phone: rows[0].phone || '', pw: rows[0].password, activated: true, id: rows[0].student_id || '' };
-        // Reload fresh data before showing dashboard so grades are current
-        await loadAllData();
-        enterDash();
-      }
-
-      async function doSignup() {
-        var code = document.getElementById('su-code').value.trim();
-        var name = document.getElementById('su-name').value.trim();
-        var email = document.getElementById('su-email').value.trim();
-        var phone = document.getElementById('su-phone') ? document.getElementById('su-phone').value.trim() : '';
-        var pw = document.getElementById('su-pw').value;
-        var err = document.getElementById('signup-err');
-        err.style.display = 'none';
-        if (!name || !email || !pw || !code) { err.textContent = 'Please fill in all required fields.'; err.style.display = 'block'; return; }
-        var rows = await dbGet('students', { reg_code: code });
-        if (!rows.length) { err.textContent = 'Invalid activation code.'; err.style.display = 'block'; return; }
-        if (rows[0].activated) { err.textContent = 'This code has already been used.'; err.style.display = 'block'; return; }
-        var ok = await dbUpdate('students', { name: name, email: email, phone: phone, password: pw, activated: true }, { reg_code: code });
-        if (!ok) { err.textContent = 'Registration failed. Please try again.'; err.style.display = 'block'; return; }
-        S.student = { name: name, email: email, phone: phone, pw: pw, activated: true, id: rows[0].student_id || '' };
-        enterDash();
-      }
 
       async function doAdminLogin() {
         var u = document.getElementById('al-user').value.trim();
@@ -4256,16 +4132,55 @@
       async function sendReset(method) {
         var val = method === 'email' ? document.getElementById('fp-email').value.trim() : document.getElementById('fp-phone').value.trim();
         if (!val) { showToast('Please enter your ' + (method === 'email' ? 'email address' : 'phone number'), ''); return; }
-        var filter = method === 'email' ? { email: val.toLowerCase() } : { phone: val };
-        var rows = await dbGet('students', filter);
-        document.getElementById('forgot-email-field').style.display = 'none';
-        document.getElementById('forgot-phone-field').style.display = 'none';
-        document.getElementById('method-email').classList.remove('active');
-        document.getElementById('method-phone').classList.remove('active');
-        if (!rows.length || !rows[0].activated) { showToast('No account found with that ' + (method === 'email' ? 'email' : 'phone number'), ''); return; }
-        var msgEl = document.getElementById('fp-success-msg');
-        if (msgEl) msgEl.innerHTML = 'Your password is: <strong style="font-family:monospace;font-size:16px;color:var(--pink);">' + rows[0].password + '</strong>';
-        document.getElementById('fp-success').classList.add('show');
+        
+        if (method === 'phone') {
+          showToast('Phone recovery is currently unavailable. Please use Email.', '');
+          return;
+        }
+
+        // Trigger Supabase Password Reset Email
+        const { data, error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
+          redirectTo: window.location.origin + window.location.pathname,
+        });
+
+        if (error) {
+          showToast(error.message, '');
+        } else {
+          document.getElementById('forgot-email-field').style.display = 'none';
+          document.getElementById('method-email').classList.remove('active');
+          var msgEl = document.getElementById('fp-success-msg');
+          if (msgEl) msgEl.innerHTML = 'A recovery link has been sent to your email. Please check your inbox (and spam folder).';
+          document.getElementById('fp-success').classList.add('show');
+        }
+      }
+
+      async function handleResetPassword() {
+        var newPw = document.getElementById('rp-pw').value;
+        var err = document.getElementById('rp-err');
+        err.style.display = 'none';
+
+        if (!newPw || newPw.length < 6) {
+          err.textContent = "Please enter a new password (min 6 chars).";
+          err.style.display = 'block';
+          return;
+        }
+
+        const { data, error } = await sb.auth.updateUser({ password: newPw });
+
+        if (error) {
+          err.textContent = error.message;
+          err.style.display = 'block';
+        } else {
+          // Success! Double-sync to legacy table if possible
+          if (S.student && S.student.email) {
+            await dbUpdate('students', { password: newPw }, { email: S.student.email });
+          }
+          showToast("Password updated successfully!", "success");
+          closeOverlay('modal-reset-pw');
+          // Important: remove the hash so it doesn't trigger again
+          window.location.hash = '';
+          showPage('page-auth');
+        }
       }
 
       // ANNOUNCEMENTS
