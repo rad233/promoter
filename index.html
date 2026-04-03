@@ -4344,7 +4344,7 @@
 
         // Trigger Supabase Password Reset Email
         const { data, error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
-          redirectTo: window.location.href.split("?")[0].split("#")[0].replace("index.html", "").replace(/\/$/, "") + "/recovery.html",
+          redirectTo: window.location.href.split('?')[0].split('#')[0].substring(0, window.location.href.split('?')[0].split('#')[0].lastIndexOf('/')) + '/recovery.html',
         });
 
         if (error) {
@@ -7701,7 +7701,9 @@
         var val = method === 'email' ? document.getElementById('fp-email').value.trim() : document.getElementById('fp-phone').value.trim();
         if (!val) { showToast('Please enter your ' + (method === 'email' ? 'email address' : 'phone number'), ''); return; }
         if (method === 'phone') { showToast('Phone reset is not supported yet. Please use email.', ''); return; }
-        const { error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), { redirectTo: window.location.origin + window.location.pathname });
+        const { error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
+          redirectTo: window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/recovery.html'
+        });
         if (error) { showToast(error.message, ''); return; }
         var msgEl = document.getElementById('fp-success-msg');
         if (msgEl) msgEl.innerHTML = 'A password reset link has been sent to your email.';
