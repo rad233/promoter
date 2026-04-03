@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password — English Promoter</title>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --charcoal: #2d2d2d;
+      --pink: #e8006e;
+      --white: #fff;
+      --gray-50: #f9f9f9;
+      --gray-200: #e2e2e2;
+      --shadow-lg: 0 8px 40px rgba(0,0,0,.18);
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Georgia, serif;
+      background: var(--gray-50);
+      color: var(--charcoal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .recovery-box {
+      background: var(--white);
+      max-width: 420px;
+      width: 100%;
+      padding: 48px 40px;
+      border-radius: 20px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+    h2 { font-size: 26px; margin-bottom: 8px; font-weight: 700; color: var(--charcoal); }
+    p.subtitle { font-size: 14px; color: #777; margin-bottom: 32px; line-height: 1.6; }
+    .fg { text-align: left; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--charcoal); text-transform: uppercase; letter-spacing: 0.5px; }
+    input {
+      width: 100%;
+      padding: 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+    input:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 4px rgba(232,0,110,0.1); }
+    .btn-update {
+      width: 100%;
+      padding: 18px;
+      background: var(--pink);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(232,0,110,.3);
+      transition: all 0.2s ease;
+      margin-top: 8px;
+    }
+    .btn-update:hover { background: #d00063; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,0,110,.4); }
+    .btn-update:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+    .err-msg { color: #d32f2f; font-size: 13px; margin-top: 20px; display: none; padding: 14px; background: #fff1f1; border-radius: 10px; border: 1px solid #ffcfcf; line-height: 1.4; text-align: left; }
+    .success-msg { color: #1b5e20; font-size: 15px; margin-top: 20px; display: none; font-weight: 600; padding: 14px; background: #e8f5e9; border-radius: 10px; border: 1px solid #c8e6c9; }
+  </style>
+</head>
+<body>
+  <div class="recovery-box">
+    <h2>Secure Recovery</h2>
+    <p class="subtitle">Please enter and confirm your new password below.</p>
+    
+    <div class="fg">
+      <label>New Password</label>
+      <input type="password" id="new-pw" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    
+    <div class="fg">
+      <label>Confirm Password</label>
+      <input type="password" id="conf-pw" placeholder="••••••••" autocomplete="new-password">
+    </div>
+
+    <div id="error-box" class="err-msg"></div>
+    <div id="success-box" class="success-msg">Password updated successfully! Redirecting...</div>
+
+    <button class="btn-update" id="btn-update" onclick="submitReset()">Update Password &rarr;</button>
+  </div>
+
+  <script>
+    // Supabase Credentials
+    const SUPA_URL = 'https://ntqvzwztgcorgssxfvbf.supabase.co';
+    const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
+    const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+    async function submitReset() {
+      const pw1 = document.getElementById('new-pw').value;
+      const pw2 = document.getElementById('conf-pw').value;
+      const err = document.getElementById('error-box');
+      const succ = document.getElementById('success-box');
+      const btn = document.getElementById('btn-update');
+
+      err.style.display = 'none';
+
+      if (!pw1 || pw1.length < 6) {
+        err.textContent = "Your password must be at least 6 characters long for security.";
+        err.style.display = 'block';
+        return;
+      }
+      if (pw1 !== pw2) {
+        err.textContent = "The passwords you entered do not match. Please try again.";
+        err.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity: 0.5">Updating...</span>';
+
+      // Supabase Password Update
+      const { data, error } = await sb.auth.updateUser({ password: pw1 });
+
+      if (error) {
+        err.textContent = error.message;
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = "Update Password &rarr;";
+      } else {
+        succ.style.display = 'block';
+        setTimeout(() => {
+          // Dynamic redirect back to the home page
+          const base = window.location.origin + window.location.pathname;
+          const target = base.replace('recovery.html', 'index.html');
+          window.location.href = target;
+        }, 2500);
+      }
+    }
+
+    // Console confirmation
+    console.log("English Promoter: Dedicated Recovery Page Loaded.");
+  </script>
+</body>
+</html>
