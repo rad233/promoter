@@ -3797,25 +3797,22 @@
       </div>
     </div>
 
-    <!-- ===== SUBMIT SUCCESS OVERLAY ===== -->
+        <!-- ===== SUBMIT SUCCESS OVERLAY ===== -->
     <div id="submit-success-overlay"
       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px;">
       <div
         style="background:#fff;border-radius:20px;width:100%;max-width:380px;padding:36px 30px;box-shadow:0 8px 40px rgba(0,0,0,.25);animation:slideUp .3s ease;text-align:center;">
-        <div
-          style="width:64px;height:64px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;">
-          ✓</div>
+        <div style="width:64px;height:64px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;">âœ“</div>
         <div style="font-family:Georgia,serif;font-size:22px;font-weight:700;margin-bottom:10px;">Exam Submitted!</div>
-        <div style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:24px;">Your exam has been
-          successfully submitted. Your results will be available once grading is complete.</div>
-        <button onclick="closeSubmitSuccess()"
-          style="width:100%;padding:14px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Okay</button>
+        <div style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:24px;">Your exam has been successfully submitted. Your results will be available once grading is complete.</div>
+        <button onclick="closeSubmitSuccess()" style="width:100%;padding:14px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-family:Georgia,serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,0,110,.3);">Okay</button>
       </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- Reset Password Modal -->
     <div id="modal-reset-pw" class="overlay">
       <div class="modal">
@@ -3825,7 +3822,7 @@
         <div class="fg">
           <label>New Password</label>
           <div class="pw-wrap">
-            <input type="password" id="rp-pw" placeholder="••••••••">
+            <input type="password" id="rp-pw" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
             <button type="button" class="pw-eye" onclick="togglePw('rp-pw', this)">
               <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
@@ -3842,7 +3839,7 @@
       const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
       const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-      // ── PRIORITY RECOVERY LOGIC ──────────────────────────────────────────────────
+      // â”€â”€ INDEPENDENT EMERGENCY OVERRIDE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       function checkRecovery() {
         if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
           var modal = document.getElementById('modal-reset-pw');
@@ -3850,22 +3847,101 @@
             modal.classList.add('open');
             modal.style.display = 'flex';
             modal.style.zIndex = '9999999';
-            setTimeout(function() { var i = document.getElementById('rp-pw'); if(i) i.focus(); }, 200);
+            setTimeout(function() { var i = document.getElementById('rp-pw'); if(i) i.focus(); }, 400);
           }
         }
       }
-      // Emergency Shortcut: Shift + P
       document.addEventListener('keydown', function(e) {
         if (e.shiftKey && e.key === 'P') {
           var m = document.getElementById('modal-reset-pw');
           if (m) { m.classList.add('open'); m.style.display = 'flex'; m.style.zIndex = '9999999'; }
         }
       });
-      // Auto-trigger on load
-      setTimeout(checkRecovery, 500);
-      window.addEventListener('hashchange', checkRecovery);
+      window.onload = function() { setTimeout(checkRecovery, 800); };
+      window.onhashchange = checkRecovery;
 
-      // ── UI HELPERS ───────────────────────────────────────────────────────────────
+      // â”€â”€ AUTHENTICATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      async function doLogin() {
+        var email = document.getElementById('li-code').value.trim();
+        var pw = document.getElementById('li-pw').value;
+        var err = document.getElementById('login-err');
+        if (err) err.style.display = 'none';
+
+        if (!email || !pw) {
+          if (err) { err.textContent = "Please enter both email and password."; err.style.display = 'block'; }
+          return;
+        }
+
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password: pw,
+        });
+
+        if (data.user && !error) {
+          // Success! Load student data from legacy table
+          var students = await dbGet('students', { email: email.toLowerCase() });
+          if (students.length) {
+            S.student = students[0];
+            enterDash();
+          } else {
+            showToast("Account synchronized. Please refresh.", "success");
+            location.reload();
+          }
+        } else {
+          if (err) {
+            err.textContent = error ? error.message : "Invalid email or password.";
+            err.style.display = 'block';
+          }
+        }
+      }
+
+      async function doSignup() {
+        var code = document.getElementById('su-code').value.trim();
+        var name = document.getElementById('su-name').value.trim();
+        var email = document.getElementById('su-email').value.trim();
+        var phone = document.getElementById('su-phone').value.trim();
+        var pw = document.getElementById('su-pw').value;
+        var err = document.getElementById('signup-err');
+        if (err) err.style.display = 'none';
+
+        if (!code || !name || !email || !pw) {
+          if (err) { err.textContent = "Please fill in all required fields."; err.style.display = 'block'; }
+          return;
+        }
+
+        // 1. Verify Activation Code in legacy table
+        var codeRows = await dbGet('registration_codes', { code: code, used: false });
+        if (!codeRows.length) {
+          if (err) { err.textContent = "Invalid or already used activation code."; err.style.display = 'block'; }
+          return;
+        }
+
+        // 2. Create Supabase Auth Account
+        const { data, error } = await sb.auth.signUp({
+          email: email.toLowerCase(),
+          password: pw,
+          options: { data: { full_name: name, phone: phone } }
+        });
+
+        if (error) {
+          if (err) { err.textContent = error.message; err.style.display = 'block'; }
+        } else {
+          // 3. Mark code as used and create student record
+          await dbUpdate('registration_codes', { used: true, used_by: email.toLowerCase() }, { code: code });
+          await dbInsert('students', {
+            email: email.toLowerCase(),
+            name: name,
+            phone: phone,
+            password: pw, // Keep for legacy sync
+            reg_code: code
+          });
+
+          showToast("Account created! Please sign in.", "success");
+          switchTab('login');
+        }
+      }
+
+      // â”€â”€ UI HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       function selAns(tn, q, letter, el) {
         var key = 't' + tn;
         if (!S.answers[key]) S.answers[key] = {};
