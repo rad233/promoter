@@ -2916,25 +2916,7 @@
 </head>
 
 <body>
-  <script>
-    // English Promoter: Top-Priority Emergency Shortcut
-    console.log("English Promoter: Emergency Shortcut Initialized.");
-    document.addEventListener("keydown", function(e) {
-      if (e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
-        console.log("English Promoter: Shortcut Triggered.");
-        var m = document.getElementById("modal-reset-pw");
-        if (m) {
-          m.classList.add("open");
-          m.style.display = "flex";
-          m.style.zIndex = "2147483647"; // Max CSS Z-index
-          m.style.visibility = "visible";
-          m.style.opacity = "1";
-        } else {
-          console.error("English Promoter: modal-reset-pw not found.");
-        }
-      }
-    }, true);
-  </script>
+
   <!-- LOGIN / SIGNUP -->
   <div id="page-auth" class="page active auth-bg">
     <div class="auth-box">
@@ -3002,7 +2984,7 @@
       </div>
       <div class="fg"><label>Password</label>
         <div class="pw-wrap"><input type="password" id="al-pw"
-            placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"> <button type="button" class="pw-eye"
+            placeholder="••••••••"> <button type="button" class="pw-eye"
             onclick="togglePw('al-pw',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -3832,26 +3814,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- Reset Password Modal -->
-    <div id="modal-reset-pw" class="overlay">
-      <div class="modal">
-        <h3>Set New Password</h3>
-        <p>Enter a new secure password for your account.</p>
-        <div id="rp-err" class="err-msg"></div>
-        <div class="fg">
-          <label>New Password</label>
-          <div class="pw-wrap">
-            <input type="password" id="rp-pw" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
-            <button type="button" class="pw-eye" onclick="togglePw('rp-pw', this)">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="modal-btns">
-          <button class="btn-auth" onclick="handleResetPassword()" style="margin-top:0;">Update Password</button>
-        </div>
-      </div>
-    </div>
+
 
     <script>
       const SUPA_URL = 'https://ntqvzwztgcorgssxfvbf.supabase.co';
@@ -7710,16 +7673,7 @@
         var fps = document.getElementById('fp-success'); if (fps) fps.classList.add('show');
       }
 
-      async function handleResetPassword() {
-        var pw = document.getElementById('rp-pw').value;
-        var err = document.getElementById('rp-err');
-        if (!err) return;
-        err.style.display = 'none';
-        if (!pw || pw.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; return; }
-        const { error } = await sb.auth.updateUser({ password: pw });
-        if (error) { err.textContent = error.message; err.style.display = 'block'; }
-        else { showToast('Password updated!', 'success'); closeOverlay('modal-reset-pw'); window.location.hash = ''; if (typeof enterDash === 'function') enterDash(); }
-      }
+
 
 
       function updateAdminDashboard() {
@@ -7941,37 +7895,13 @@
         }
       });
 
-      // Handle Supabase Auth redirects (like Password Reset)
-      function checkRecovery() {
-        console.log("Checking URL Hash:", window.location.hash);
-        if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
-          console.log("Recovery token detected! Opening modal...");
-          var modal = document.getElementById('modal-reset-pw');
-          if (modal) {
-            modal.classList.add('open');
-            modal.style.display = 'flex';
-            modal.style.zIndex = '9999999';
-            setTimeout(function() {
-              var input = document.getElementById('rp-pw');
-              if (input) input.focus();
-            }, 200);
-          } else {
-            alert("Error: Modal element 'modal-reset-pw' not found in page!");
-          }
-        }
-      }
+
 
 
       window.addEventListener('load', function() {
-        // Run with a tiny delay to ensure it wins against other page logic
-        setTimeout(function() {
-          checkRecovery();
-        }, 100);
         // Initialize data
         if (typeof loadAllData === 'function') loadAllData();
       });
-
-      window.addEventListener('hashchange', checkRecovery);
     </script>
 
 
