@@ -760,6 +760,11 @@
       z-index: 9999999 !important;
     }
 
+
+     /* Corrected styling section */
+    
+
+
     .modal {
       background: #fff;
       border-radius: var(--radius-lg);
@@ -2916,6 +2921,38 @@
 </head>
 
 <body>
+
+  <!-- UNLOCK MODAL -->
+  <div id="unlock-modal" class="overlay">
+    <div class="modal">
+      <h3> Unlock Exam</h3>
+      <p>Enter the exam code from your instructor, then verify with your personal ID.</p>
+      <div id="unlock-err" class="err-msg">Invalid code or ID. Please try again.</div>
+      <div class="fg"><label>Exam Code</label><input type="text" id="ex-code" placeholder="e.g. EXAM2026-V2"
+          autocomplete="off"
+          style="width:100%;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:Georgia,serif;font-size:14px;outline:none;background:var(--gray-50);">
+      </div>
+      <div class="fg" style="margin-top:8px;"><label>Your Personal ID</label><input type="text" id="ex-id"
+          placeholder="Your ID number" autocomplete="off"
+          style="width:100%;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:Georgia,serif;font-size:14px;outline:none;background:var(--gray-50);">
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOverlay('unlock-modal')">Cancel</button>
+        <button type="button" class="btn-auth" style="margin-top:0;flex:1;" onclick="doUnlock()">Unlock &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO MODAL -->
+  <div id="info-modal" class="overlay">
+    <div class="modal">
+      <h3> Exam Info</h3>
+      <div id="info-modal-body"></div>
+      <div class="modal-btns"><button type="button" class="btn-auth" style="margin-top:0;"
+          onclick="closeOverlay('info-modal')">Close</button></div>
+    </div>
+  </div>
+
 
   <!-- LOGIN / SIGNUP -->
   <div id="page-auth" class="page active auth-bg">
@@ -7898,7 +7935,40 @@
 
 
 
-      window.addEventListener('load', function() {
+      function showUnlock() {
+        document.getElementById('unlock-modal').classList.add('open');
+        document.getElementById('unlock-err').style.display = 'none';
+      }
+
+      function showInfoModal(examCode) {
+        var modal = document.getElementById('info-modal');
+        var body = document.getElementById('info-modal-body');
+        if (!modal) return;
+        if (body) {
+          var exam = examCode && S.exams && S.exams[examCode] ? S.exams[examCode] : null;
+          var sched = examCode && S.schedule && S.schedule[examCode] ? S.schedule[examCode] : null;
+          var h = '<div style="background:var(--gray-50);border-radius:10px;padding:14px 16px;font-size:13px;line-height:2.2;">';
+          if (exam) {
+            var dur = exam.duration || 150;
+            var dh = Math.floor(dur / 60), dm = dur % 60;
+            var durStr = (dh > 0 ? dh + ' hour' + (dh !== 1 ? 's' : '') + ' ' : '') + (dm > 0 ? dm + ' min' : '');
+            h += '<div><strong>Exam:</strong> ' + exam.title + '</div>';
+            if (sched) h += '<div><strong>Date:</strong> ' + sched.date + (sched.time ? ' &middot; ' + sched.time : '') + '</div>';
+            h += '<div><strong>Duration:</strong> ' + durStr + '</div>';
+            if (exam.info) h += '</div><div style="margin-top:10px;background:#fff;border:1.5px solid var(--gray-200);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;color:var(--charcoal-light);">' + exam.info;
+          } else {
+            h += '<div><strong>Subject:</strong> English Language</div>';
+            h += '<div><strong>Duration:</strong> 2 hours 30 minutes</div>';
+            h += '<div><strong>Total:</strong> 70 points</div>';
+          }
+          h += '</div>';
+          body.innerHTML = h;
+        }
+        modal.classList.add('open');
+      }
+
+      window.addEventListener('load', function () {
+
         // Initialize data
         if (typeof loadAllData === 'function') loadAllData();
       });
