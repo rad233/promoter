@@ -138,10 +138,10 @@
           btn.textContent = "Update Successful!";
           
           setTimeout(() => {
-            // Redirect back to the specific platform file with robust path handling
-            const target = 'index.html (33).html';
+            // Redirect back to the main platform file
+            const target = 'index.html';
             console.log("English Promoter: Redirecting to " + target);
-            window.location.href = encodeURI(target);
+            window.location.href = target;
           }, 1500);
         }
       } catch (errCatch) {
