@@ -4181,7 +4181,7 @@
         t.className = 'toast show' + (type ? ' ' + type : '');
         setTimeout(function () { t.classList.remove('show'); }, 3000);
       }
-      function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+      function closeOverlay(id) { var el = document.getElementById(id); if (!el) return; el.classList.remove('open'); el.style.display = 'none'; }
       function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
       function togglePw(inputId, btn) {
@@ -4410,7 +4410,14 @@
       function unpin() { document.getElementById('pinned-ann').classList.remove('show'); showToast('Unpinned', ''); }
 
       // UNLOCK
-      function showUnlock() { document.getElementById('unlock-modal').classList.add('open'); document.getElementById('unlock-err').style.display = 'none'; }
+      function showUnlock() {
+        var m = document.getElementById('unlock-modal');
+        if (!m) return;
+        m.classList.add('open');
+        m.style.display = 'flex';
+        var err = document.getElementById('unlock-err');
+        if (err) err.style.display = 'none';
+      }
       function showInfoModal(examCode) {
         var modal = document.getElementById('info-modal');
         var body = document.getElementById('info-modal-body');
@@ -4436,6 +4443,7 @@
           body.innerHTML = h;
         }
         modal.classList.add('open');
+        modal.style.display = 'flex';
       }
       async function doUnlock() {
         var code = document.getElementById('ex-code').value.trim().toUpperCase();
@@ -7936,8 +7944,12 @@
 
 
       function showUnlock() {
-        document.getElementById('unlock-modal').classList.add('open');
-        document.getElementById('unlock-err').style.display = 'none';
+        var m = document.getElementById('unlock-modal');
+        if (!m) return;
+        m.classList.add('open');
+        m.style.display = 'flex';
+        var err = document.getElementById('unlock-err');
+        if (err) err.style.display = 'none';
       }
 
       function showInfoModal(examCode) {
@@ -7965,6 +7977,7 @@
           body.innerHTML = h;
         }
         modal.classList.add('open');
+        modal.style.display = 'flex';
       }
 
       window.addEventListener('load', function () {
