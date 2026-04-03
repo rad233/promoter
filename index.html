@@ -3837,9 +3837,95 @@
       </div>
     </div>
 
+    <script>
       const SUPA_URL = 'https://ntqvzwztgcorgssxfvbf.supabase.co';
       const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
       const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+      // ── UI HELPERS ───────────────────────────────────────────────────────────────
+      function selAns(tn, q, letter, el) {
+        var key = 't' + tn;
+        if (!S.answers[key]) S.answers[key] = {};
+        S.answers[key][q] = letter;
+        var row = el.closest('.q-block');
+        if (row) {
+          var opts = row.querySelectorAll('.opt');
+          for (var i = 0; i < opts.length; i++) opts[i].className = 'opt';
+        }
+        el.className = 'opt sel';
+        if (typeof syncSidebar === 'function') syncSidebar(tn, q, letter);
+      }
+
+      function safeCopy(text, successMsg) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;font-size:16px;border:none;outline:none;';
+          ta.setAttribute('readonly', '');
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.setSelectionRange(0, 99999);
+          try { document.execCommand('copy'); } catch (e2) { }
+          document.body.removeChild(ta);
+          showToast(successMsg || 'Copied!', 'success');
+        } catch (e) { showToast('Copy failed', ''); }
+      }
+
+      function switchTab(tab) {
+        var tl = document.getElementById('tab-login'), ts = document.getElementById('tab-signup');
+        var fl = document.getElementById('form-login'), fs = document.getElementById('form-signup');
+        if (tl) tl.className = 'auth-tab' + (tab === 'login' ? ' active' : '');
+        if (ts) ts.className = 'auth-tab' + (tab === 'signup' ? ' active' : '');
+        if (fl) fl.style.display = tab === 'login' ? 'block' : 'none';
+        if (fs) fs.style.display = tab === 'signup' ? 'block' : 'none';
+      }
+
+      function showForgot() {
+        var fe = document.getElementById('forgot-email-field'), fp = document.getElementById('forgot-phone-field');
+        var fs = document.getElementById('fp-success'), me = document.getElementById('method-email'), mp = document.getElementById('method-phone');
+        if (fe) fe.style.display = 'none'; if (fp) fp.style.display = 'none';
+        if (fs) fs.classList.remove('show');
+        if (me) me.classList.remove('active'); if (mp) mp.classList.remove('active');
+        var e = document.getElementById('fp-email'), ph = document.getElementById('fp-phone');
+        if (e) e.value = ''; if (ph) ph.value = '';
+        showPage('page-forgot');
+      }
+
+      function selectMethod(method) {
+        var me = document.getElementById('method-email'), mp = document.getElementById('method-phone');
+        var fe = document.getElementById('forgot-email-field'), fp = document.getElementById('forgot-phone-field');
+        var fs = document.getElementById('fp-success');
+        if (me) me.classList.toggle('active', method === 'email');
+        if (mp) mp.classList.toggle('active', method === 'phone');
+        if (fe) fe.style.display = method === 'email' ? 'block' : 'none';
+        if (fp) fp.style.display = method === 'phone' ? 'block' : 'none';
+        if (fs) fs.classList.remove('show');
+      }
+
+      async function postAnnouncement(pin) {
+        var t = document.getElementById('ann-t'), b = document.getElementById('ann-b');
+        if (!t || !b || !t.value.trim() || !b.value.trim()) { showToast('Please fill in both title and message', ''); return; }
+        var title = t.value.trim(), body = b.value.trim();
+        var annTitle = document.getElementById('ann-title'), annBody = document.getElementById('ann-body');
+        if (annTitle) annTitle.textContent = title; if (annBody) annBody.textContent = body;
+        if (pin) {
+          var pt = document.getElementById('pin-title'), pb = document.getElementById('pin-body');
+          if (pt) pt.textContent = title; if (pb) pb.textContent = body;
+          var pa = document.getElementById('pinned-ann'); if (pa) pa.classList.add('show');
+        }
+        var h = document.getElementById('ann-history');
+        if (h) {
+          var d = document.createElement('div');
+          d.style.cssText = 'padding:12px;background:var(--gray-50);border-radius:8px;margin-bottom:8px;';
+          d.innerHTML = '<div style="font-weight:600;font-size:13px;">' + title + '</div>'
+            + '<div style="font-size:12px;color:var(--gray-600);margin-top:4px;">' + body + '</div>'
+            + (pin ? '<div style="margin-top:6px;"><span style="font-size:11px;color:var(--pink);font-weight:600;">PINNED</span></div>' : '');
+          h.insertBefore(d, h.firstChild);
+        }
+        await dbInsert('announcements', { title: title, body: body, pinned: pin ? true : false });
+        t.value = ''; b.value = '';
+        showToast(pin ? 'Posted and pinned!' : 'Posted!', 'success');
+      }
 
       async function dbGet(table, filters) {
         try { var q = sb.from(table).select('*'); if (filters) { for (var k in filters) q = q.eq(k, filters[k]); } var { data, error } = await q; if (error) { console.error('dbGet', table, error); return []; } return data || []; } catch (e) { console.error('dbGet err', e); return []; }
