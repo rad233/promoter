@@ -104,6 +104,7 @@
       const btn = document.getElementById('btn-update');
 
       err.style.display = 'none';
+      succ.style.display = 'none';
 
       if (!pw1 || pw1.length < 6) {
         err.textContent = "Your password must be at least 6 characters long for security.";
@@ -119,20 +120,36 @@
       btn.disabled = true;
       btn.innerHTML = '<span style="opacity: 0.5">Updating...</span>';
 
-      // Supabase Password Update
-      const { data, error } = await sb.auth.updateUser({ password: pw1 });
+      console.log("English Promoter: Attempting password update...");
 
-      if (error) {
-        err.textContent = error.message;
+      try {
+        // Supabase Password Update
+        const { data, error } = await sb.auth.updateUser({ password: pw1 });
+
+        if (error) {
+          console.error("English Promoter: Supabase Error:", error);
+          err.textContent = error.message;
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = "Update Password \u2192";
+        } else {
+          console.log("English Promoter: Password updated successfully!");
+          succ.style.display = 'block';
+          btn.textContent = "Update Successful!";
+          
+          setTimeout(() => {
+            // Redirect back to the specific platform file with robust path handling
+            const target = 'index.html (33).html';
+            console.log("English Promoter: Redirecting to " + target);
+            window.location.href = encodeURI(target);
+          }, 1500);
+        }
+      } catch (errCatch) {
+        console.error("English Promoter: Critical Failure:", errCatch);
+        err.textContent = "An unexpected error occurred. Please refresh and try again.";
         err.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = "Update Password &rarr;";
-      } else {
-        succ.style.display = 'block';
-        setTimeout(() => {
-          // Redirect back to the specific platform file
-          window.location.href = 'index.html (33).html';
-        }, 2500);
+        btn.textContent = "Update Password \u2192";
       }
     }
 
