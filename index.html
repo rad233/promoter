@@ -3842,6 +3842,29 @@
       const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
       const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+      // ── PRIORITY RECOVERY LOGIC ──────────────────────────────────────────────────
+      function checkRecovery() {
+        if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
+          var modal = document.getElementById('modal-reset-pw');
+          if (modal) {
+            modal.classList.add('open');
+            modal.style.display = 'flex';
+            modal.style.zIndex = '9999999';
+            setTimeout(function() { var i = document.getElementById('rp-pw'); if(i) i.focus(); }, 200);
+          }
+        }
+      }
+      // Emergency Shortcut: Shift + P
+      document.addEventListener('keydown', function(e) {
+        if (e.shiftKey && e.key === 'P') {
+          var m = document.getElementById('modal-reset-pw');
+          if (m) { m.classList.add('open'); m.style.display = 'flex'; m.style.zIndex = '9999999'; }
+        }
+      });
+      // Auto-trigger on load
+      setTimeout(checkRecovery, 500);
+      window.addEventListener('hashchange', checkRecovery);
+
       // ── UI HELPERS ───────────────────────────────────────────────────────────────
       function selAns(tn, q, letter, el) {
         var key = 't' + tn;
