@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Your Password â€” English Promoter</title>
+  <title>Reset Your Password — English Promoter</title>
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -76,12 +76,12 @@
     
     <div class="fg">
       <label>New Password</label>
-      <input type="password" id="new-pw" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="new-password">
+      <input type="password" id="new-pw" placeholder="••••••••" autocomplete="new-password">
     </div>
     
     <div class="fg">
       <label>Confirm Password</label>
-      <input type="password" id="conf-pw" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="new-password">
+      <input type="password" id="conf-pw" placeholder="••••••••" autocomplete="new-password">
     </div>
 
     <div id="error-box" class="err-msg"></div>
@@ -131,9 +131,7 @@
         succ.style.display = 'block';
         setTimeout(() => {
           // Redirect back to the specific platform file
-          const base = window.location.origin + window.location.pathname;
-          const target = base.substring(0, base.lastIndexOf('/')) + '/index.html (33).html';
-          window.location.href = target;
+          window.location.href = 'index.html (33).html';
         }, 2500);
       }
     }
