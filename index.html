@@ -4530,7 +4530,7 @@
               submitted_at: null
             }, 'student_email,exam_code');
           }
-          // Check Supabase every 15 seconds as a fallback for admin pause/adjust
+          // Sync to Supabase every 15 seconds — keeps all students in lockstep with the server clock
           if (S.timeLeft % 15 === 0) {
             (function (curLeft) {
               dbGet('timer_state', { exam_code: examCode }).then(function (rows) {
@@ -4540,6 +4540,11 @@
                 if (ts.paused && !S.timerPaused) {
                   S.timerPaused = true;
                   clearInterval(S.timerInt);
+                  // Snap to the saved paused time
+                  S.timeLeft = ts.time_left || curLeft;
+                  var el = document.getElementById('exam-timer');
+                  var h2 = Math.floor(S.timeLeft / 3600), m2 = Math.floor((S.timeLeft % 3600) / 60), s2 = S.timeLeft % 60;
+                  if (el) { el.textContent = h2 + ':' + pad(m2) + ':' + pad(s2); el.className = 'exam-timer warn'; }
                   showToast('Exam paused by invigilator', '');
                   // Poll every 2 seconds to detect resume
                   clearInterval(window._pausePollInt);
@@ -4565,12 +4570,13 @@
                   _runExamTimer(examCode, newLeft);
                   showToast('Exam resumed by invigilator', 'success');
                 }
-                // Admin adjusted time — sync if difference > 30s
+                // Always re-anchor to the server's authoritative time (keeps all students in sync)
                 if (!ts.paused && !S.timerPaused) {
                   var elapsed3 = ts.started_at ? Math.floor((Date.now() - ts.started_at) / 1000) : 0;
-                  var adminLeft = Math.max(0, ts.time_left - elapsed3);
-                  if (Math.abs(adminLeft - curLeft) > 30) {
-                    S.timeLeft = adminLeft;
+                  var serverLeft = Math.max(0, ts.time_left - elapsed3);
+                  // Apply if difference is more than 5 seconds to avoid micro-jitter
+                  if (Math.abs(serverLeft - curLeft) > 5) {
+                    S.timeLeft = serverLeft;
                     if (S.timeLeft <= 0) { clearInterval(S.timerInt); showTimesUp(); }
                   }
                 }
@@ -4663,32 +4669,56 @@
               }));
             } catch (_) {}
           }
-          var sc3 = S.schedule && S.schedule[_examCode];
-          if (sc3 && sc3.date && sc3.time) {
-            var schedStart = new Date(sc3.date + 'T' + sc3.time + ':00').getTime();
-            var schedElapsed = Math.floor((Date.now() - schedStart) / 1000);
-            if (schedElapsed > 0 && schedElapsed < _totalSecs) {
-              // Exam already started — join at correct remaining time
-              _runExamTimer(_examCode, Math.max(0, _totalSecs - schedElapsed));
-            } else if (schedElapsed >= _totalSecs) {
-              // Time already expired
-              showTimesUp();
+          // Always read from Supabase timer_state first — it's the authoritative source
+          dbGet('timer_state', { exam_code: _examCode }).then(function (rows) {
+            if (rows.length) {
+              var ts3 = rows[0];
+              if (ts3.paused) {
+                // Timer is paused — show paused time, poll for resume
+                var pausedLeft = ts3.time_left || _totalSecs;
+                S.timeLeft = pausedLeft;
+                S.timerPaused = true;
+                var elT = document.getElementById('exam-timer');
+                var hT = Math.floor(pausedLeft / 3600), mT = Math.floor((pausedLeft % 3600) / 60), sT = pausedLeft % 60;
+                if (elT) { elT.textContent = hT + ':' + pad(mT) + ':' + pad(sT); elT.className = 'exam-timer warn'; }
+                showToast('Exam is currently paused by invigilator', '');
+                clearInterval(window._pausePollInt);
+                window._pausePollInt = setInterval(function () {
+                  dbGet('timer_state', { exam_code: _examCode }).then(function (pRows2) {
+                    if (!pRows2.length || pRows2[0].paused) return;
+                    clearInterval(window._pausePollInt);
+                    var pts2 = pRows2[0];
+                    var pElapsed2 = pts2.started_at ? Math.floor((Date.now() - pts2.started_at) / 1000) : 0;
+                    var pLeft2 = Math.max(0, (pts2.time_left || 0) - pElapsed2);
+                    S.timerPaused = false;
+                    _runExamTimer(_examCode, pLeft2);
+                    showToast('Exam resumed by invigilator', 'success');
+                  });
+                }, 2000);
+              } else {
+                // Timer is running — anchor to server time
+                var elapsed3 = ts3.started_at ? Math.floor((Date.now() - ts3.started_at) / 1000) : 0;
+                var serverLeft3 = Math.max(0, (ts3.time_left || _totalSecs) - elapsed3);
+                _runExamTimer(_examCode, serverLeft3 > 0 ? serverLeft3 : _totalSecs);
+              }
             } else {
-              // Exam hasn't started yet or just started
-              _runExamTimer(_examCode, _totalSecs);
-            }
-          } else {
-            // Also check Supabase timer_state for existing timer
-            dbGet('timer_state', { exam_code: _examCode }).then(function (rows) {
-              if (rows.length && !rows[0].paused) {
-                var elapsed2 = rows[0].started_at ? Math.floor((Date.now() - rows[0].started_at) / 1000) : 0;
-                var left2 = Math.max(0, rows[0].time_left - elapsed2);
-                _runExamTimer(_examCode, left2 > 0 ? left2 : _totalSecs);
+              // No timer_state in Supabase — fall back to schedule-based calculation
+              var sc3 = S.schedule && S.schedule[_examCode];
+              if (sc3 && sc3.date && sc3.time) {
+                var schedStart = new Date(sc3.date + 'T' + sc3.time + ':00').getTime();
+                var schedElapsed = Math.floor((Date.now() - schedStart) / 1000);
+                if (schedElapsed > 0 && schedElapsed < _totalSecs) {
+                  _runExamTimer(_examCode, Math.max(0, _totalSecs - schedElapsed));
+                } else if (schedElapsed >= _totalSecs) {
+                  showTimesUp();
+                } else {
+                  _runExamTimer(_examCode, _totalSecs);
+                }
               } else {
                 _runExamTimer(_examCode, _totalSecs);
               }
-            });
-          }
+            }
+          });
         }
         if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         if (S.pdfFile && window.pdfjsLib) {
@@ -5610,7 +5640,7 @@
           });
         });
       }
-      function saveEssayGradeEntry(i) {
+      async function saveEssayGradeEntry(i) {
         var entries = window._essayEntries || []; var e = entries[i]; if (!e) return;
         var f = document.getElementById('fl-' + i), a = document.getElementById('ac-' + i), fb = document.getElementById('fb-' + i);
         if (!f || !a || !f.value || !a.value) { showToast('Enter both scores', ''); return; }
@@ -5625,7 +5655,7 @@
         var _eEmail = e.gk.split('|')[0];
         var _eCode = e.gk.split('|')[1];
         var _tKey = 't' + e.taskNum;
-        dbUpsert('grades', {
+        await dbUpsert('grades', {
           student_email: _eEmail, exam_code: _eCode, task_key: _tKey,
           score: total, max_score: e.maxPts, fluency: fluency, accuracy: accuracy,
           feedback: fb ? fb.value.trim() : ''
@@ -6991,8 +7021,8 @@
 
           for (var ti = 1; ti <= taskCount; ti++) {
             var tKey2 = 't' + ti;
-            var isEssay2 = (ex.tasks && ex.tasks[ti - 1] && ex.tasks[ti - 1].type === 'essay');
-            var tg = isEssay2 ? (grades.essay || null) : (grades[tKey2] || null);
+            var isEssay2 = (ex.tasks && ex.tasks[ti - 1] && (ex.tasks[ti - 1].type === 'essay' || ex.tasks[ti - 1].type === 'writing'));
+            var tg = isEssay2 ? (grades['t' + ti] || grades['wt' + ti] || grades.essay || null) : (grades[tKey2] || null);
             var maxPts = (ex.tasks && ex.tasks[ti - 1] && ex.tasks[ti - 1].pts) ? ex.tasks[ti - 1].pts : (isEssay2 ? 16 : 10);
             var graded = tg ? true : false;
             var gradeBtn = isEssay2
@@ -7922,7 +7952,7 @@
           var taskCount = ex && ex.tasks ? ex.tasks.length : 7;
           var total = 0, allGraded = true, cells = '';
           for (var ti = 1; ti <= taskCount; ti++) {
-            var tg = grades['t' + ti];
+            var tg = grades['t' + ti] || grades['wt' + ti] || (ti === 7 ? grades.essay : null);
             if (tg) { total += tg.score; cells += '<td>' + tg.score + '/' + tg.max + '</td>'; }
             else { allGraded = false; cells += '<td style="color:var(--gray-400);">—</td>'; }
           }
