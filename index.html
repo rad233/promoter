@@ -5589,27 +5589,28 @@
               var rks = Object.keys(S.regCodes);
               for (var ri = 0; ri < rks.length; ri++) { if (S.regCodes[rks[ri]].email === stEmail) { stName = S.regCodes[rks[ri]].name; break; } }
               var tasks = ex.tasks || [];
-              var foundWriting = false;
+              var writingTaskIndices = [];
               for (var ti = 0; ti < tasks.length; ti++) {
-                if (tasks[ti].type === 'essay' || tasks[ti].type === 'writing') {
-                  foundWriting = true;
-                  var taskNum = ti + 1;
-                  var essayText = (sub.answers && sub.answers['t' + taskNum]) || '';
-                  var maxPts = tasks[ti].pts || 16; var half = Math.floor(maxPts / 2);
-                  var gk = stEmail + '|' + exCode;
-                  var eg = gradeMap[gk] && (gradeMap[gk]['t' + taskNum] || gradeMap[gk]['wt' + taskNum]);
-                  entries.push({ stEmail: stEmail, stName: stName || stEmail, exCode: exCode, exTitle: ex.title, taskNum: taskNum, essayText: essayText, existing: eg, maxPts: maxPts, half: half, gk: gk, legacy: false });
-                }
+                var t = tasks[ti];
+                // Check if it's explicitly an essay/writing task, OR if it has high points and no AK
+                var isWriting = (t.type === 'essay' || t.type === 'writing' || (!S.answerKey['t' + (ti + 1) + '_q1'] && t.pts >= 12));
+                if (isWriting) writingTaskIndices.push(ti);
               }
-              if (!foundWriting) {
-                // Fallback: check t7 answer
-                var essayText2 = (sub.answers && sub.answers['t7']) || '';
-                if (essayText2) {
-                  var gk2 = stEmail + '|' + exCode;
-                  var eg2 = gradeMap[gk2] && (gradeMap[gk2]['t7'] || gradeMap[gk2]['essay']);
-                  entries.push({ stEmail: stEmail, stName: stName || stEmail, exCode: exCode, exTitle: ex.title, taskNum: 7, essayText: essayText2, existing: eg2, maxPts: 16, half: 8, gk: gk2, legacy: false });
-                }
+              // If no explicit writing tasks found, fallback to the last task if it has a long answer or high points
+              if (!writingTaskIndices.length && tasks.length > 0) {
+                var lastTi = tasks.length - 1;
+                var lastAns = (sub.answers && sub.answers['t' + (lastTi + 1)]) || '';
+                if (lastAns.length > 50 || (tasks[lastTi] && tasks[lastTi].pts >= 10)) writingTaskIndices.push(lastTi);
               }
+
+              writingTaskIndices.forEach(function (ti) {
+                var taskNum = ti + 1;
+                var essayText = (sub.answers && sub.answers['t' + taskNum]) || '';
+                var maxPts = tasks[ti].pts || 16; var half = Math.floor(maxPts / 2);
+                var gk = stEmail + '|' + exCode;
+                var eg = gradeMap[gk] && (gradeMap[gk]['t' + taskNum] || gradeMap[gk]['wt' + taskNum] || gradeMap[gk]['essay']);
+                entries.push({ stEmail: stEmail, stName: stName || stEmail, exCode: exCode, exTitle: ex.title, taskNum: taskNum, essayText: essayText, existing: eg, maxPts: maxPts, half: half, gk: gk, legacy: false });
+              });
             });
 
             if (!entries.length) {
@@ -7118,6 +7119,15 @@
             var tGrade = isEssay
               ? (grades['t' + t] || grades['wt' + t] || grades['essay'] || grades['t7'] || grades['wt7'])
               : grades[tKey];
+
+            // If it's a writing task and no grade found, look for any grade row with fluency/accuracy
+            if (isEssay && !tGrade) {
+              var allKeys = Object.keys(grades);
+              for (var ki = 0; ki < allKeys.length; ki++) {
+                var g = grades[allKeys[ki]];
+                if (g && g.fluency !== undefined && g.fluency !== null) { tGrade = g; break; }
+              }
+            }
             // Extra fallback: if no grade found by tKey, check all keys for a match
             if (!tGrade) {
               var allKeys = Object.keys(grades);
@@ -7894,6 +7904,9 @@
           if (r.fluency !== null && r.fluency !== undefined) { obj.fluency = r.fluency; obj.accuracy = r.accuracy; }
           S.grades[key][r.task_key] = obj;
           if (S.student && S.student.email === r.student_email) renderStudentResults();
+          if (document.getElementById('task-list')) renderTaskList();
+          if (document.getElementById('results-table')) renderResultsTable();
+          if (document.getElementById('essays-list')) buildEssays();
         }).subscribe();
         sb.channel('tmr').on('postgres_changes', { event: '*', schema: 'public', table: 'timer_state' }, function (payload) {
           var r = payload.new; if (!r || !S.activeExamCode || r.exam_code !== S.activeExamCode) return;
