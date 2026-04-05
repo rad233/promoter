@@ -4583,7 +4583,6 @@
       function startExam(isReEntry) {
         showPage('page-exam'); buildSidebar();
         var _hasIntro = S.parsedExam && S.parsedExam.hasIntro;
-        gotoTask(_hasIntro ? 0 : 1);
         var _activeEx = S.activeExamCode && S.exams[S.activeExamCode];
         var _examDur = _activeEx ? (_activeEx.duration || 150) : 150;
         var _examCode = S.activeExamCode;
@@ -4591,16 +4590,18 @@
         clearInterval(S.timerInt);
 
         if (isReEntry) {
-          // Restore saved answers from Supabase
+          // Restore saved answers first, THEN go to task so answers render correctly
           if (S.student) {
             dbGet('submissions', { student_email: S.student.email, exam_code: _examCode }).then(function (subRows) {
               if (subRows.length && subRows[0].elapsed_str === 'in_progress') {
                 S.answers = subRows[0].answers || { t1: {}, t2: {}, t3: {}, t4: {}, t5: {}, t6: {}, t7: '' };
                 showToast('Your previous answers have been restored', 'success');
-                // Re-render current task to show restored answers
-                renderTask(S.curTask);
               }
+              // Navigate to task AFTER answers are loaded so they render correctly
+              gotoTask(_hasIntro ? 0 : 1);
             });
+          } else {
+            gotoTask(_hasIntro ? 0 : 1);
           }
           // Read remaining time from Supabase timer_state
           dbGet('timer_state', { exam_code: _examCode }).then(function (rows) {
@@ -4650,6 +4651,7 @@
           });
         } else {
           // First entry — calculate time from schedule start (timer is shared for all students)
+          gotoTask(_hasIntro ? 0 : 1);
           S.examStartTime = Date.now();
           // Save exam start time to localStorage so timer survives page refresh
           if (S.student && S.student.email) {
@@ -6062,9 +6064,20 @@
           dbGet('timer_state', { exam_code: code }).then(function (rows) {
             var isPaused = rows.length && rows[0].paused;
             if (isPaused) {
-              // Resume — calculate correct remaining time
+              // Resume — use saved time_left, or fall back to schedule-based remaining time
               var ts = rows[0];
               var newLeft = ts.time_left || 0;
+              if (!newLeft) {
+                // Fallback: calculate from schedule
+                var _sc0 = S.schedule && S.schedule[code];
+                if (_sc0 && _sc0.date && _sc0.time) {
+                  var _startMs0 = new Date(_sc0.date + 'T' + _sc0.time + ':00').getTime();
+                  var _totalSecs0 = (_sc0.duration || 150) * 60;
+                  newLeft = Math.max(60, _totalSecs0 - Math.floor((Date.now() - _startMs0) / 1000));
+                } else {
+                  newLeft = (_sc0 ? (_sc0.duration || 150) : 150) * 60;
+                }
+              }
               dbUpsert('timer_state', { exam_code: code, time_left: newLeft, paused: false, started_at: Date.now() }, 'exam_code');
               showToast('Timer resumed', 'success');
             } else {
@@ -6087,13 +6100,27 @@
           var secs = mins * 60;
 
           dbGet('timer_state', { exam_code: code }).then(function (rows) {
-            if (!rows.length) { showToast("Timer not started yet", "error"); return; }
-            var ts = rows[0];
-            var elapsed = ts.started_at ? Math.floor((Date.now() - ts.started_at) / 1000) : 0;
-            var curLeft = ts.paused ? (ts.time_left || 0) : Math.max(0, (ts.time_left || 0) - elapsed);
+            var ts, curLeft, isPausedAdj;
+            if (!rows.length) {
+              // No timer_state yet — derive current time from schedule
+              var _sc1 = S.schedule && S.schedule[code];
+              if (_sc1 && _sc1.date && _sc1.time) {
+                var _startMs1 = new Date(_sc1.date + 'T' + _sc1.time + ':00').getTime();
+                var _totalSecs1 = (_sc1.duration || 150) * 60;
+                curLeft = Math.max(0, _totalSecs1 - Math.floor((Date.now() - _startMs1) / 1000));
+              } else {
+                curLeft = (_sc1 ? (_sc1.duration || 150) : 150) * 60;
+              }
+              isPausedAdj = false;
+            } else {
+              ts = rows[0];
+              var elapsed = ts.started_at ? Math.floor((Date.now() - ts.started_at) / 1000) : 0;
+              curLeft = ts.paused ? (ts.time_left || 0) : Math.max(0, (ts.time_left || 0) - elapsed);
+              isPausedAdj = !!ts.paused;
+            }
             var newLeft = dir === 'add' ? curLeft + secs : Math.max(10, curLeft - secs);
 
-            dbUpsert('timer_state', { exam_code: code, time_left: newLeft, paused: ts.paused, started_at: (ts.paused ? 0 : Date.now()) }, 'exam_code');
+            dbUpsert('timer_state', { exam_code: code, time_left: newLeft, paused: isPausedAdj, started_at: (isPausedAdj ? 0 : Date.now()) }, 'exam_code');
 
             // Sync schedule duration so getExamStatus() shows "ended" only when the adjusted timer actually finishes
             var _sc = S.schedule && S.schedule[code];
