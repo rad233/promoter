@@ -5582,28 +5582,22 @@
 
             var entries = [];
             subs.forEach(function (sub) {
-              // Show all submissions that have answers
               var stEmail = sub.student_email, exCode = sub.exam_code;
               var ex = S.exams[exCode]; if (!ex) return;
-              var stName = '';
-              var rks = Object.keys(S.regCodes);
+              var stName = ''; var rks = Object.keys(S.regCodes);
               for (var ri = 0; ri < rks.length; ri++) { if (S.regCodes[rks[ri]].email === stEmail) { stName = S.regCodes[rks[ri]].name; break; } }
               var tasks = ex.tasks || [];
-              var writingTaskIndices = [];
+              var writingIndices = [];
               for (var ti = 0; ti < tasks.length; ti++) {
                 var t = tasks[ti];
-                // Check if it's explicitly an essay/writing task, OR if it has high points and no AK
-                var isWriting = (t.type === 'essay' || t.type === 'writing' || (!S.answerKey['t' + (ti + 1) + '_q1'] && t.pts >= 12));
-                if (isWriting) writingTaskIndices.push(ti);
-              }
-              // If no explicit writing tasks found, fallback to the last task if it has a long answer or high points
-              if (!writingTaskIndices.length && tasks.length > 0) {
-                var lastTi = tasks.length - 1;
-                var lastAns = (sub.answers && sub.answers['t' + (lastTi + 1)]) || '';
-                if (lastAns.length > 50 || (tasks[lastTi] && tasks[lastTi].pts >= 10)) writingTaskIndices.push(lastTi);
+                // Task is writing if: explicitly typed, OR has no answer key in S.answerKey and high points
+                var isExplicit = (t.type === 'essay' || t.type === 'writing');
+                var hasAK = false; if (S.answerKey) { for (var k in S.answerKey) { if (k.startsWith('t' + (ti + 1) + '_')) { hasAK = true; break; } } }
+                var isManual = !hasAK && (t.pts >= 10 || ti === tasks.length - 1);
+                if (isExplicit || isManual) writingIndices.push(ti);
               }
 
-              writingTaskIndices.forEach(function (ti) {
+              writingIndices.forEach(function (ti) {
                 var taskNum = ti + 1;
                 var essayText = (sub.answers && sub.answers['t' + taskNum]) || '';
                 var maxPts = tasks[ti].pts || 16; var half = Math.floor(maxPts / 2);
@@ -7108,7 +7102,10 @@
 
           for (var t = 1; t <= taskCount; t++) {
             var tKey = 't' + t;
-            var isEssay = (ex.tasks && ex.tasks[t - 1] && (ex.tasks[t - 1].type === 'essay' || ex.tasks[t - 1].type === 'writing'));
+            var tasks3 = ex.tasks || [];
+            var tDef3 = tasks3[t - 1];
+            var hasAK3 = false; if (S.answerKey) { for (var k in S.answerKey) { if (k.startsWith('t' + t + '_')) { hasAK3 = true; break; } } }
+            var isEssay = tDef3 && (tDef3.type === 'essay' || tDef3.type === 'writing' || (!hasAK3 && (tDef3.pts >= 10 || t === taskCount)));
             var tType3 = (ex.tasks && ex.tasks[t - 1] && ex.tasks[t - 1].type) || '';
             var tLbl3 = tType3 === 'essay' || tType3 === 'writing' ? 'Writing' :
               tType3 === 'listening' ? 'Listening' :
