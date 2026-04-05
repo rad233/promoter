@@ -5646,26 +5646,15 @@
         var obj = { score: total, max: e.maxPts, fluency: fluency, accuracy: accuracy, feedback: fb ? fb.value.trim() : '' };
         if (e.legacy) { S.grades[e.gk]['t' + e.taskNum] = obj; S.grades[e.gk].essay = obj; }
         else { S.grades[e.gk]['wt' + e.taskNum] = obj; S.grades[e.gk]['t' + e.taskNum] = obj; }
-        // Save to Supabase — save under both t and wt keys for maximum compatibility
+        // Save to Supabase — always use t+taskNum as key for consistency
         var _eEmail = e.gk.split('|')[0];
         var _eCode = e.gk.split('|')[1];
-        var _fbVal = fb ? fb.value.trim() : '';
         var _tKey = 't' + e.taskNum;
-        var _wtKey = 'wt' + e.taskNum;
-        var ok1 = await dbUpsert('grades', {
+        await dbUpsert('grades', {
           student_email: _eEmail, exam_code: _eCode, task_key: _tKey,
           score: total, max_score: e.maxPts, fluency: fluency, accuracy: accuracy,
-          feedback: _fbVal
+          feedback: fb ? fb.value.trim() : ''
         }, 'student_email,exam_code,task_key');
-        var ok2 = await dbUpsert('grades', {
-          student_email: _eEmail, exam_code: _eCode, task_key: _wtKey,
-          score: total, max_score: e.maxPts, fluency: fluency, accuracy: accuracy,
-          feedback: _fbVal
-        }, 'student_email,exam_code,task_key');
-        if (!ok1 && !ok2) {
-          showToast('Error saving grade — check console', '');
-          return;
-        }
         showToast('Grade saved for ' + e.stName + '! ' + total + '/' + e.maxPts, 'success');
         if (S.student) renderStudentResults();
         buildEssays();
@@ -7126,7 +7115,7 @@
                       tType3 === 'dialogue' ? 'Dialogue' : '';
             var tGrade = isEssay
               ? (grades['t' + t] || grades['wt' + t] || grades['essay'] || grades['t7'] || grades['wt7'])
-              : (grades[tKey] || grades['wt' + t]);
+              : grades[tKey];
 
             // If it's a writing task and no grade found, look for any grade row with fluency/accuracy
             if (isEssay && !tGrade) {
@@ -7914,7 +7903,7 @@
           if (S.student && S.student.email === r.student_email) renderStudentResults();
           if (document.getElementById('task-list')) renderTaskList();
           if (document.getElementById('results-table')) renderResultsTable();
-          if (document.getElementById('essay-list')) buildEssays();
+          if (document.getElementById('essays-list')) buildEssays();
         }).subscribe();
         sb.channel('tmr').on('postgres_changes', { event: '*', schema: 'public', table: 'timer_state' }, function (payload) {
           var r = payload.new; if (!r || !S.activeExamCode || r.exam_code !== S.activeExamCode) return;
