@@ -7135,6 +7135,10 @@
         var isEssay = grade.fluency !== undefined;
 
         var modal = document.getElementById('info-modal');
+        if (modal && modal.parentElement && modal.parentElement !== document.body) {
+          document.body.appendChild(modal);
+        }
+        if (modal) modal.style.display = 'flex';
         var body = document.getElementById('info-modal-body');
         var titleEl = modal ? modal.querySelector('h3') : null;
         if (!modal || !body) return;
