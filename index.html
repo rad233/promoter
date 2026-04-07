@@ -3928,10 +3928,14 @@
           return;
         }
 
-        // 1. Verify Activation Code in legacy table
-        var codeRows = await dbGet('registration_codes', { code: code, used: false });
+        // 1. Verify Activation Code in students table
+        var codeRows = await dbGet('students', { reg_code: code });
         if (!codeRows.length) {
-          if (err) { err.textContent = "Invalid or already used activation code."; err.style.display = 'block'; }
+          if (err) { err.textContent = "Invalid activation code."; err.style.display = 'block'; }
+          return;
+        }
+        if (codeRows[0].activated) {
+          if (err) { err.textContent = "This code has already been used."; err.style.display = 'block'; }
           return;
         }
 
@@ -3945,15 +3949,14 @@
         if (error) {
           if (err) { err.textContent = error.message; err.style.display = 'block'; }
         } else {
-          // 3. Mark code as used and create student record
-          await dbUpdate('registration_codes', { used: true, used_by: email.toLowerCase() }, { code: code });
-          await dbInsert('students', {
+          // 3. Mark code as used and update the placeholder student record
+          await dbUpdate('students', { 
             email: email.toLowerCase(),
             name: name,
             phone: phone,
             password: pw, // Keep for legacy sync
-            reg_code: code
-          });
+            activated: true 
+          }, { reg_code: code });
 
           showToast("Account created! Please sign in.", "success");
           switchTab('login');
