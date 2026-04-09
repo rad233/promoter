@@ -5326,7 +5326,13 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pdfBase64: b64, prompt: prompt })
-        }).then(function (r) { return r.json(); }).then(function (data) {
+        }).then(function (r) {
+          // Safely parse JSON — if Vercel returns a 504 HTML page, r.json() would crash
+          return r.json().catch(function () {
+            var statusMsg = r.status === 504 ? 'Server timeout — Gemini took too long. Please try again.' : 'Server error (' + r.status + '). Please try again.';
+            throw new Error(statusMsg);
+          });
+        }).then(function (data) {
           clearInterval(progInt);
           if (progEl) progEl.style.width = '100%';
           setTimeout(function () {
@@ -5346,22 +5352,30 @@
               text = text.slice(jsonStart, jsonEnd + 1);
               var parsed = JSON.parse(text);
               if (!parsed.tasks || !parsed.tasks.length) throw new Error('No tasks found');
-              // Log each task structure to debug
               for (var dbi = 0; dbi < parsed.tasks.length; dbi++) {
                 var dbt = parsed.tasks[dbi];
               }
               applyParsedExam(parsed, fname);
             } catch (err) {
               console.error('Parse error:', err);
-              document.getElementById('pdf-status').textContent = 'Parse error';
+              document.getElementById('pdf-status').textContent = 'Parse failed';
               document.getElementById('pdf-parsed-result').style.display = 'block';
-              document.getElementById('parsed-summary').textContent = 'Could not auto-read PDF. Try again or set answer key manually.';
+              // Show friendly message depending on error type
+              var isbusy = err.message && (err.message.indexOf('busy') !== -1 || err.message.indexOf('demand') !== -1 || err.message.indexOf('timeout') !== -1 || err.message.indexOf('unavailable') !== -1);
+              document.getElementById('parsed-summary').textContent = isbusy
+                ? '⏳ Gemini AI is busy right now. Please wait a moment and try uploading again.'
+                : 'Could not auto-read PDF: ' + err.message;
             }
           }, 400);
         }).catch(function (err) {
           clearInterval(progInt);
           document.getElementById('pdf-parsing').style.display = 'none';
-          showToast('PDF parse failed — check your connection', '');
+          document.getElementById('pdf-status').textContent = 'Parse failed';
+          document.getElementById('pdf-parsed-result').style.display = 'block';
+          var isbusy = err.message && (err.message.indexOf('busy') !== -1 || err.message.indexOf('demand') !== -1 || err.message.indexOf('timeout') !== -1);
+          document.getElementById('parsed-summary').textContent = isbusy
+            ? '⏳ Gemini AI is busy right now. Please wait a moment and try uploading again.'
+            : 'Parse failed: ' + err.message;
           console.error('Fetch error:', err);
         });
       }
