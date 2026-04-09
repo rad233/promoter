@@ -1,3 +1,7 @@
+export const config = {
+  maxDuration: 60, // Extend Vercel function timeout to 60s
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -18,66 +22,70 @@ export default async function handler(req, res) {
       return;
     }
 
-    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const MODEL = 'gemini-2.5-flash';
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
     async function callGemini(promptText) {
-      const MAX_RETRIES = 3;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        console.log(`[${MODEL}] Attempt ${attempt}/${MAX_RETRIES}`);
 
-      for (const model of MODELS) {
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          try {
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{
-                    parts: [
-                      { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
-                      { text: promptText }
-                    ]
-                  }],
-                  generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 65536,
-                    response_mime_type: 'application/json'
-                  }
-                })
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
+                  { text: promptText }
+                ]
+              }],
+              generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 65536,
+                response_mime_type: 'application/json'
               }
-            );
-            const data = await response.json();
-            // If overloaded (503) or rate limited (429), retry
-            if (response.status === 503 || response.status === 429) {
-              const waitMs = attempt * 5000; // 5s, 10s, 15s
-              console.warn(`Model ${model} overloaded (attempt ${attempt}), retrying in ${waitMs}ms...`);
-              await sleep(waitMs);
-              continue;
-            }
-            if (!response.ok) throw new Error(data.error?.message || 'Gemini API error');
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          } catch (e) {
-            if (attempt === MAX_RETRIES) {
-              console.warn(`Model ${model} failed after ${MAX_RETRIES} attempts, trying next model...`);
-              break; // try next model
-            }
-            await sleep(attempt * 5000);
+            })
           }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          console.log(`[${MODEL}] Success on attempt ${attempt}`);
+          return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+
+        const errMsg = data.error?.message || `HTTP ${response.status}`;
+        console.error(`[${MODEL}] Attempt ${attempt} failed: ${errMsg}`);
+
+        // Don't retry on auth/bad-request errors
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+          throw new Error(errMsg);
+        }
+
+        // On overload (429/503), wait and retry
+        if (attempt < MAX_RETRIES) {
+          console.log(`[${MODEL}] Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+          await sleep(RETRY_DELAY_MS);
+        } else {
+          throw new Error(`Gemini is currently busy. Please try again in a moment. (${errMsg})`);
         }
       }
-      throw new Error('All Gemini models are currently unavailable. Please try again in a few minutes.');
     }
 
     function cleanAndParse(raw) {
       raw = (raw || '').replace(/```json|```/g, '').trim();
       const js = raw.indexOf('{');
       const je = raw.lastIndexOf('}');
-      if (js === -1 || je === -1) throw new Error('No JSON found');
+      if (js === -1 || je === -1) throw new Error('No JSON found in model response');
       return JSON.parse(raw.slice(js, je + 1));
-    }
-
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // ── Call 1: Structure (questions, options, dialogue, word bank) ───────────
@@ -100,8 +108,8 @@ RULES: Preserve Georgian text exactly. Extract ALL tasks. Include full match par
     const raw1 = await callGemini(prompt1);
     const parsed1 = cleanAndParse(raw1);
 
-    // ── Wait 3 seconds between calls to avoid rate limit ─────────────────────
-    await sleep(3000);
+    // ── Short wait between the two API calls ──────────────────────────────────
+    await sleep(2000);
 
     // ── Call 2: Long texts only (reading passage + gapfill articles) ─────────
     const prompt2 = `From this exam PDF extract ONLY the long article/passage texts. Return ONLY valid JSON:
@@ -130,7 +138,7 @@ Copy text EXACTLY. Preserve Georgian. Include gap markers at exact positions.`;
     res.status(200).json({ text: JSON.stringify(parsed1) });
 
   } catch (err) {
-    console.error('Parse error:', err);
+    console.error('Parse error:', err.message);
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
