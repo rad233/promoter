@@ -8,7 +8,7 @@
 
 
   <meta http-equiv="Expires" content="0">
-  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js" type="module"></script>
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.4/dist/lottie-player.js"></script>
   <style>
     :root {
       --charcoal: #2d2d2d;
@@ -64,28 +64,25 @@
     }
 
     .loader-wrap {
-      width: 300px;
-      height: 300px;
+      width: 220px;
+      height: 220px;
       /* Force rigid square size */
-      min-width: 300px;
-      min-height: 300px;
+      min-width: 220px;
+      min-height: 220px;
       display: block;
       margin: auto;
       overflow: visible;
     }
 
-    #global-loader dotlottie-wc {
+    #global-loader lottie-player {
       display: block;
       width: 100% !important;
       height: 100% !important;
-      /* Ensures the animation doesn't stretch inside its own tag */
       aspect-ratio: 1 / 1 !important;
     }
     /* FIX FOR BLURRY LOTTIE IN CHROME */
-    #global-loader dotlottie-wc canvas,
-    #global-loader dotlottie-wc svg {
+    #global-loader lottie-player {
       transform: none !important;
-      image-rendering: -webkit-optimize-contrast;
     }
 
     @keyframes fadeIn {
@@ -2971,7 +2968,7 @@
   <!-- GLOBAL LOADER (LOTTIE) -->
   <div id="global-loader">
     <div class="loader-wrap">
-      <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" width="300" height="300" autoplay loop></dotlottie-wc>
+      <lottie-player src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" background="transparent" speed="1" direction="1" mode="normal" loop autoplay renderer="svg"></lottie-player>
     </div>
   </div>
 
