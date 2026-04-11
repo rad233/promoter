@@ -66,13 +66,20 @@
     .loader-wrap {
       width: 300px;
       height: 300px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      /* Force rigid square size */
+      min-width: 300px;
+      min-height: 300px;
+      display: block;
+      margin: auto;
+      overflow: visible;
     }
+
     #global-loader dotlottie-wc {
+      display: block;
       width: 100% !important;
       height: 100% !important;
+      /* Ensures the animation doesn't stretch inside its own tag */
+      aspect-ratio: 1 / 1 !important;
     }
 
     @keyframes fadeIn {
