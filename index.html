@@ -64,6 +64,14 @@
       display: flex;
     }
 
+    #global-loader dotlottie-wc {
+      width: 300px;
+      height: 300px;
+      max-width: 90vw;
+      max-height: 90vh;
+      flex-shrink: 0;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -3919,6 +3927,7 @@
         }
 
         showLoader();
+        await new Promise(r => setTimeout(r, 50));
 
         const { data, error } = await sb.auth.signInWithPassword({
           email: email.toLowerCase(),
