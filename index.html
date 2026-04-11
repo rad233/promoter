@@ -54,24 +54,25 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       z-index: 999999;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
+      /* Grid is more stable for perfect centering */
+      display: none; /* hidden by default */
+      place-items: center;
       animation: fadeIn 0.3s ease;
     }
-
     #global-loader.active {
-      display: flex;
+      display: grid;
     }
 
-    #global-loader dotlottie-wc {
+    .loader-wrap {
       width: 300px;
       height: 300px;
-      max-width: 80vw;
-      max-height: 80vh;
-      flex-shrink: 0;
-      /* Ensure it doesn't get distorted */
-      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #global-loader dotlottie-wc {
+      width: 100% !important;
+      height: 100% !important;
     }
 
     @keyframes fadeIn {
@@ -2956,7 +2957,9 @@
 <body>
   <!-- GLOBAL LOADER (LOTTIE) -->
   <div id="global-loader">
-    <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" autoplay loop></dotlottie-wc>
+    <div class="loader-wrap">
+      <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" autoplay loop></dotlottie-wc>
+    </div>
   </div>
 
   <!-- UNLOCK MODAL -->
