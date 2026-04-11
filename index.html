@@ -81,6 +81,12 @@
       /* Ensures the animation doesn't stretch inside its own tag */
       aspect-ratio: 1 / 1 !important;
     }
+    /* FIX FOR BLURRY LOTTIE IN CHROME */
+    #global-loader dotlottie-wc canvas,
+    #global-loader dotlottie-wc svg {
+      transform: none !important;
+      image-rendering: -webkit-optimize-contrast;
+    }
 
     @keyframes fadeIn {
       from { opacity: 0; }
@@ -2965,7 +2971,7 @@
   <!-- GLOBAL LOADER (LOTTIE) -->
   <div id="global-loader">
     <div class="loader-wrap">
-      <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" autoplay loop></dotlottie-wc>
+      <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" width="300" height="300" autoplay loop></dotlottie-wc>
     </div>
   </div>
 
@@ -3939,7 +3945,7 @@
         }
 
         showLoader();
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise(r => setTimeout(r, 100)); // 100ms pulse for crisp rendering
 
         const { data, error } = await sb.auth.signInWithPassword({
           email: email.toLowerCase(),
@@ -7812,7 +7818,7 @@
         if (!email) { err.textContent = 'Please enter your email address.'; err.style.display = 'block'; return; }
 
         showLoader();
-        await new Promise(r => setTimeout(r, 60));
+        await new Promise(r => setTimeout(r, 100)); // 100ms pulse for crisp rendering
 
         const { data, error } = await sb.auth.signInWithPassword({ email: email, password: pw });
 
