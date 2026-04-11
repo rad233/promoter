@@ -67,9 +67,11 @@
     #global-loader dotlottie-wc {
       width: 300px;
       height: 300px;
-      max-width: 90vw;
-      max-height: 90vh;
+      max-width: 80vw;
+      max-height: 80vh;
       flex-shrink: 0;
+      /* Ensure it doesn't get distorted */
+      aspect-ratio: 1 / 1;
     }
 
     @keyframes fadeIn {
@@ -2954,7 +2956,7 @@
 <body>
   <!-- GLOBAL LOADER (LOTTIE) -->
   <div id="global-loader">
-    <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" style="width: 300px; height: 300px;" autoplay loop></dotlottie-wc>
+    <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" autoplay loop></dotlottie-wc>
   </div>
 
   <!-- UNLOCK MODAL -->
@@ -7799,6 +7801,9 @@
         err.style.display = 'none';
         if (!email) { err.textContent = 'Please enter your email address.'; err.style.display = 'block'; return; }
 
+        showLoader();
+        await new Promise(r => setTimeout(r, 60));
+
         const { data, error } = await sb.auth.signInWithPassword({ email: email, password: pw });
 
         if (!error && data.user) {
@@ -7807,6 +7812,7 @@
             S.student = { name: rows[0].name, email: rows[0].email, phone: rows[0].phone || '', activated: true, id: rows[0].student_id || '' };
           }
           await loadAllData();
+          hideLoader();
           if (typeof enterDash === 'function') enterDash();
           return;
         }
@@ -7821,12 +7827,14 @@
           if (!mErr) {
             S.student = { name: oldRows[0].name, email: oldRows[0].email, phone: oldRows[0].phone || '', activated: true, id: oldRows[0].student_id || '' };
             await loadAllData();
+            hideLoader();
             if (typeof enterDash === 'function') enterDash();
             return;
           }
         }
         err.textContent = error ? error.message : 'Incorrect email or password.';
         err.style.display = 'block';
+        hideLoader();
       }
 
       async function doSignup() {
