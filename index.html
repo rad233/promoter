@@ -7,9 +7,8 @@
   <title>English Promoter &mdash; Exam Platform</title>
 
 
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js" type="module"></script>
   <style>
     :root {
       --charcoal: #2d2d2d;
@@ -44,6 +43,30 @@
       background: var(--gray-50);
       color: var(--charcoal);
       min-height: 100vh;
+    }
+
+    /* GLOBAL LOADER */
+    #global-loader {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 999999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease;
+    }
+
+    #global-loader.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     input,
@@ -2921,6 +2944,10 @@
 </head>
 
 <body>
+  <!-- GLOBAL LOADER (LOTTIE) -->
+  <div id="global-loader">
+    <dotlottie-wc src="https://lottie.host/730f3204-41d5-421e-849e-408f194e9ed6/9C0Urkshe1.lottie" style="width: 300px; height: 300px;" autoplay loop></dotlottie-wc>
+  </div>
 
   <!-- UNLOCK MODAL -->
   <div id="unlock-modal" class="overlay">
@@ -3891,6 +3918,8 @@
           return;
         }
 
+        showLoader();
+
         const { data, error } = await sb.auth.signInWithPassword({
           email: email.toLowerCase(),
           password: pw,
@@ -3901,6 +3930,7 @@
           var students = await dbGet('students', { email: email.toLowerCase() });
           if (students.length) {
             S.student = students[0];
+            hideLoader();
             enterDash();
           } else {
             showToast("Account synchronized. Please refresh.", "success");
@@ -3911,6 +3941,7 @@
             err.textContent = error ? error.message : "Invalid email or password.";
             err.style.display = 'block';
           }
+          hideLoader();
         }
       }
 
@@ -3964,6 +3995,15 @@
       }
 
       // â”€â”€ UI HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      function showLoader() {
+        var loader = document.getElementById('global-loader');
+        if (loader) loader.classList.add('active');
+      }
+      function hideLoader() {
+        var loader = document.getElementById('global-loader');
+        if (loader) loader.classList.remove('active');
+      }
+
       function selAns(tn, q, letter, el) {
         var key = 't' + tn;
         if (!S.answers[key]) S.answers[key] = {};
@@ -4000,6 +4040,8 @@
         if (fl) fl.style.display = tab === 'login' ? 'block' : 'none';
         if (fs) fs.style.display = tab === 'signup' ? 'block' : 'none';
       }
+
+
 
       function showForgot() {
         var fe = document.getElementById('forgot-email-field'), fp = document.getElementById('forgot-phone-field');
@@ -4316,46 +4358,41 @@
 
       // FORGOT PASSWORD
       function showForgot() {
-        document.getElementById('forgot-email-field').style.display = 'none';
-        document.getElementById('forgot-phone-field').style.display = 'none';
-        document.getElementById('fp-success').classList.remove('show');
-        document.getElementById('method-email').classList.remove('active');
-        document.getElementById('method-phone').classList.remove('active');
-        document.getElementById('fp-email').value = '';
-        document.getElementById('fp-phone').value = '';
+        var fe = document.getElementById('forgot-email-field'), fp = document.getElementById('forgot-phone-field');
+        var fs = document.getElementById('fp-success'), me = document.getElementById('method-email'), mp = document.getElementById('method-phone');
+        if (fe) fe.style.display = 'none'; if (fp) fp.style.display = 'none';
+        if (fs) fs.classList.remove('show');
+        if (me) me.classList.remove('active'); if (mp) mp.classList.remove('active');
+        var e = document.getElementById('fp-email'), ph = document.getElementById('fp-phone');
+        if (e) e.value = ''; if (ph) ph.value = '';
         showPage('page-forgot');
       }
+
       function selectMethod(method) {
-        document.getElementById('method-email').classList.toggle('active', method === 'email');
-        document.getElementById('method-phone').classList.toggle('active', method === 'phone');
-        document.getElementById('forgot-email-field').style.display = method === 'email' ? 'block' : 'none';
-        document.getElementById('forgot-phone-field').style.display = method === 'phone' ? 'block' : 'none';
-        document.getElementById('fp-success').classList.remove('show');
+        var me = document.getElementById('method-email'), mp = document.getElementById('method-phone');
+        var fe = document.getElementById('forgot-email-field'), fp = document.getElementById('forgot-phone-field');
+        var fs = document.getElementById('fp-success');
+        if (me) me.classList.toggle('active', method === 'email');
+        if (mp) mp.classList.toggle('active', method === 'phone');
+        if (fe) fe.style.display = method === 'email' ? 'block' : 'none';
+        if (fp) fp.style.display = method === 'phone' ? 'block' : 'none';
+        if (fs) fs.classList.remove('show');
       }
+
       async function sendReset(method) {
         var val = method === 'email' ? document.getElementById('fp-email').value.trim() : document.getElementById('fp-phone').value.trim();
         if (!val) { showToast('Please enter your ' + (method === 'email' ? 'email address' : 'phone number'), ''); return; }
-        
-        if (method === 'phone') {
-          showToast('Phone recovery is currently unavailable. Please use Email.', '');
-          return;
-        }
-
-        // Trigger Supabase Password Reset Email
-        const { data, error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
-          redirectTo: window.location.href.split('?')[0].split('#')[0].substring(0, window.location.href.split('?')[0].split('#')[0].lastIndexOf('/')) + '/recovery.html',
+        if (method === 'phone') { showToast('Phone reset is not supported yet. Please use email.', ''); return; }
+        const { error } = await sb.auth.resetPasswordForEmail(val.toLowerCase(), {
+          redirectTo: window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/recovery.html'
         });
-
-        if (error) {
-          showToast(error.message, '');
-        } else {
-          document.getElementById('forgot-email-field').style.display = 'none';
-          document.getElementById('method-email').classList.remove('active');
-          var msgEl = document.getElementById('fp-success-msg');
-          if (msgEl) msgEl.innerHTML = 'A recovery link has been sent to your email. Please check your inbox (and spam folder).';
-          document.getElementById('fp-success').classList.add('show');
-        }
+        if (error) { showToast(error.message, ''); return; }
+        var msgEl = document.getElementById('fp-success-msg');
+        if (msgEl) msgEl.innerHTML = 'A password reset link has been sent to your email.';
+        var fps = document.getElementById('fp-success'); if (fps) fps.classList.add('show');
       }
+
+
 
       async function handleResetPassword() {
         var newPw = document.getElementById('rp-pw').value;
@@ -7822,6 +7859,8 @@
         if (msgEl) msgEl.innerHTML = 'A password reset link has been sent to your email.';
         var fps = document.getElementById('fp-success'); if (fps) fps.classList.add('show');
       }
+
+
 
 
 
