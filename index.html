@@ -1171,6 +1171,17 @@
       gap: 5px;
     }
 
+    .opts-horizontal {
+      flex-direction: row !important;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .opts-horizontal .opt {
+      flex: 1 1 auto;
+      min-width: 140px;
+    }
+
     .opt {
       display: flex;
       align-items: center;
@@ -4896,7 +4907,7 @@
           }
           for (var i = 0; i < task.qs.length; i++) {
             var q = task.qs[i];
-            h += '<div class="q-block"><div class="q-text"><span class="q-num-inline">' + (i + 1) + '.</span> ' + q.q + '</div><div class="opts">';
+            h += '<div class="q-block"><div class="q-text"><span class="q-num-inline">' + (i + 1) + '.</span> ' + q.q + '</div><div class="' + (n === 2 ? 'opts opts-horizontal' : 'opts') + '">';
             for (var j = 0; j < task.opts.length; j++) {
               var l = task.opts[j], sel = S.answers['t' + n] && S.answers['t' + n][i + 1] === l ? ' sel' : '';
               h += '<div class="opt' + sel + '" onclick="selAns(' + n + ',' + (i + 1) + ',&#39;' + l + '&#39;,this)"><div class="opt-letter">' + l + '</div><span>' + q.os[j] + '</span></div>';
@@ -4928,7 +4939,7 @@
           if (task.text) h += '<div class="reading-box" style="margin-bottom:16px;">' + task.text + '</div>';
           for (var i = 0; i < task.qs.length; i++) {
             var q = task.qs[i];
-            h += '<div class="q-block"><div class="q-text"><span class="q-num-inline">' + (i + 1) + '.</span> ' + q.q + '</div><div class="opts">';
+            h += '<div class="q-block"><div class="q-text"><span class="q-num-inline">' + (i + 1) + '.</span> ' + q.q + '</div><div class="' + (n === 2 ? 'opts opts-horizontal' : 'opts') + '">';
             for (var j = 0; j < task.opts.length; j++) {
               var l = task.opts[j], sel = S.answers['t' + n] && S.answers['t' + n][i + 1] === l ? ' sel' : '';
               h += '<div class="opt' + sel + '" onclick="selAns(' + n + ',' + (i + 1) + ',\x27' + l + '\x27,this)"><div class="opt-letter">' + l + '</div><span>' + q.os[j] + '</span></div>';
