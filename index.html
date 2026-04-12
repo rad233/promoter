@@ -1173,13 +1173,19 @@
 
     .opts-horizontal {
       flex-direction: row !important;
-      flex-wrap: wrap;
-      gap: 10px;
+      flex-wrap: wrap !important;
+      gap: 12px !important;
+      align-items: flex-start !important;
     }
 
     .opts-horizontal .opt {
       flex: 1 1 auto;
-      min-width: 140px;
+      min-width: 160px;
+      margin-bottom: 0 !important;
+    }
+
+    .opts-horizontal .opt-letter-only {
+      margin-bottom: 0 !important;
     }
 
     .opt {
@@ -4921,7 +4927,7 @@
           for (var i = 0; i < task.qs.length; i++) {
             var selLet = S.answers['t' + n] && S.answers['t' + n][i + 1] ? S.answers['t' + n][i + 1] : '';
             h += '<div class="q-block"><div class="q-text"><span class="q-num-inline">' + (i + 1) + '.</span> ' + task.qs[i].q + '</div>';
-            h += '<div class="opts" style="flex-wrap:wrap;gap:6px;margin-top:6px;">';
+            h += '<div class="' + (n === 2 ? 'opts opts-horizontal' : 'opts') + '" style="margin-top:6px;">';
             for (var mi = 0; mi < task.opts.length; mi++) {
               var ml = task.opts[mi], msel = selLet === ml ? ' sel' : '';
               h += '<div class="opt-letter-only' + msel + '" onclick="selAns(' + n + ',' + (i + 1) + ',\'' + ml + '\',this)" style="width:36px;height:36px;">' + ml + '</div>';
