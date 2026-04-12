@@ -63,31 +63,64 @@
       display: grid;
     }
 
+    /* ORBITAL LOADER (Recreation of user preferred Lottie) */
     .loader-wrap {
-      display: grid;
-      place-items: center;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .orbital-loader {
+      position: relative;
       width: 80px;
       height: 80px;
     }
 
-    /* PREMIUM CSS SPINNER */
-    .premium-spinner {
-      width: 60px;
-      height: 60px;
-      border: 4px solid rgba(232, 0, 110, 0.1);
-      border-top: 4px solid #e8006e;
+    .orb {
+      position: absolute;
+      width: 45px;
+      height: 45px;
       border-radius: 50%;
-      animation: spin-premium 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
-      box-shadow: 0 0 15px rgba(232, 0, 110, 0.1);
+      mix-blend-mode: multiply; /* Creates the color overlap effect */
+      opacity: 0.85;
+      filter: blur(2px);
     }
 
-    @keyframes spin-premium {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .orb-cyan {
+      background: #00A3E0;
+      animation: drift-cyan 3s ease-in-out infinite;
     }
-    /* FIX FOR BLURRY LOTTIE IN CHROME */
-    #global-loader lottie-player {
-      transform: none !important;
+
+    .orb-navy {
+      background: #000054;
+      animation: drift-navy 3s ease-in-out infinite;
+      animation-delay: -1s;
+    }
+
+    .orb-purple {
+      background: #4B3DA2;
+      animation: drift-purple 3s ease-in-out infinite;
+      animation-delay: -2s;
+    }
+
+    @keyframes drift-cyan {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(25px, 15px) scale(1.1); }
+      66% { transform: translate(-15px, 20px) scale(0.9); }
+    }
+
+    @keyframes drift-navy {
+      0%, 100% { transform: translate(30px, 30px) scale(1); }
+      33% { transform: translate(5px, 40px) scale(0.9); }
+      66% { transform: translate(40px, 5px) scale(1.1); }
+    }
+
+    @keyframes drift-purple {
+      0%, 100% { transform: translate(-10px, 35px) scale(1); }
+      33% { transform: translate(30px, -5px) scale(1.1); }
+      66% { transform: translate(10px, 45px) scale(0.9); }
     }
 
     @keyframes fadeIn {
@@ -2973,7 +3006,11 @@
   <!-- GLOBAL LOADER (LOTTIE) -->
   <div id="global-loader">
     <div class="loader-wrap">
-      <div class="premium-spinner"></div>
+      <div class="orbital-loader">
+        <div class="orb orb-cyan"></div>
+        <div class="orb orb-navy"></div>
+        <div class="orb orb-purple"></div>
+      </div>
     </div>
   </div>
 
