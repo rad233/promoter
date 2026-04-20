@@ -4529,7 +4529,7 @@
       }
       async function doUnlock() {
         var code = document.getElementById('ex-code').value.trim().toUpperCase();
-        var id = document.getElementById('ex-id').value.trim().toUpperCase();
+        var id = document.getElementById('ex-id').value.trim();
         var err = document.getElementById('unlock-err');
         err.style.display = 'none';
         // Check exam exists
