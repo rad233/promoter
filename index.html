@@ -5663,7 +5663,13 @@
 
       function buildEssays() {
         var el = document.getElementById('essay-list'); if (!el) return;
-        el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">Loading...</div>';
+        if (!el.innerHTML.trim() || el.innerHTML.indexOf('No writing tasks') !== -1) {
+          el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">Loading...</div>';
+        } else {
+          el.style.opacity = '0.5';
+          el.style.pointerEvents = 'none';
+          el.style.transition = 'opacity 0.2s';
+        }
         // Load all submissions fresh from Supabase
         dbGet('submissions').then(function (subs) {
           dbGet('grades').then(function (gradeRows) {
@@ -5715,6 +5721,8 @@
 
             if (!entries.length) {
               el.innerHTML = '<div class="acard" style="text-align:center;padding:28px;color:var(--gray-400);font-size:13px;">No writing tasks submitted yet.</div>';
+              el.style.opacity = '1';
+              el.style.pointerEvents = 'auto';
               return;
             }
             window._essayEntries = entries;
@@ -5738,6 +5746,8 @@
               h += '</div>';
             }
             el.innerHTML = h;
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
           });
         });
       }
