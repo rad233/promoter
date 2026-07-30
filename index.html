@@ -4266,10 +4266,12 @@
             return;
           }
 
-          // Supabase Authentication for Admin
-          const { data, error } = await sb.auth.signInWithPassword({
+          // Ensure we use a guaranteed client with the key:
+          const adminAuthClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+          const { data, error } = await adminAuthClient.auth.signInWithPassword({
             email: u,
-            password: p,
+            password: p
           });
 
           if (data && data.user && !error) {
