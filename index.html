@@ -3039,7 +3039,7 @@
 
 
   <!-- LOGIN / SIGNUP -->
-  <div style="background:#ffffff;">
+  <div id="landing-header" style="background:#ffffff;">
     <div style="background:linear-gradient(180deg,#1A000D 0%,#80003A 55%,#B3004B 100%);">
 
       <div
@@ -3087,7 +3087,7 @@
     </div>
   </div>
 
-  <div style="max-width:480px;margin:50px auto 70px;padding:0 24px;background:#ffffff;">
+  <div id="auth-card" style="max-width:480px;margin:50px auto 70px;padding:0 24px;background:#ffffff;">
     <!-- VIEW 1: AUTH -->
     <div id="view-auth">
       <!-- Tab Controls -->
@@ -4259,6 +4259,10 @@
           if (document.getElementById('view-auth')) document.getElementById('view-auth').style.display = 'none';
           if (document.getElementById('view-forgot')) document.getElementById('view-forgot').style.display = 'none';
           if (document.getElementById('view-admin')) document.getElementById('view-admin').style.display = 'block';
+
+          // Hide outer landing header and auth card
+          if (document.getElementById('landing-header')) document.getElementById('landing-header').style.display = 'none';
+          if (document.getElementById('auth-card')) document.getElementById('auth-card').style.display = 'none';
         }
         async function doAdminLogin() {
           var uEl = document.getElementById('al-user');
@@ -4290,6 +4294,8 @@
           if (data && data.user && !error) {
             // Hide auth card and load admin dashboard modules
             if (typeof showPage === 'function') showPage('page-admin');
+            if (document.getElementById('landing-header')) document.getElementById('landing-header').style.display = 'none';
+            if (document.getElementById('auth-card')) document.getElementById('auth-card').style.display = 'none';
             if (typeof showSec === 'function') showSec('dashboard');
             if (typeof buildEssays === 'function') buildEssays();
             if (typeof startLiveCountdown === 'function') startLiveCountdown();
