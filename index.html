@@ -4115,7 +4115,19 @@
       <script>
         const SUPA_URL = 'https://ntqvzwztgcorgssxfvbf.supabase.co';
         const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cXZ6d3p0Z2Nvcmdzc3hmdmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI0MDQsImV4cCI6MjA4OTE3ODQwNH0.5dd3ObqsBf7h49IWWaNuzKcFeOiKUtTfK0iH-TmuA1o';
-        const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+        const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          },
+          global: {
+            headers: {
+              'apikey': SUPA_KEY,
+              'Authorization': `Bearer ${SUPA_KEY}`
+            }
+          }
+        });
         var currentAuthMode = 'login';
 
         // Run initial tab setup on load
@@ -4266,12 +4278,10 @@
             return;
           }
 
-          // Ensure we use a guaranteed client with the key:
-          const adminAuthClient = supabase.createClient(SUPA_URL, SUPA_KEY);
-
-          const { data, error } = await adminAuthClient.auth.signInWithPassword({
+          // Supabase Authentication for Admin
+          const { data, error } = await sb.auth.signInWithPassword({
             email: u,
-            password: p
+            password: p,
           });
 
           if (data && data.user && !error) {
