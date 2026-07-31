@@ -4705,10 +4705,12 @@
 
       async function dbGet(table, filters) {
         try {
-          // 1. Ensure active session is loaded onto client headers
-          await sb.auth.getSession();
+          var sess = (await sb.auth.getSession()).data.session;
+          if (sess?.access_token) {
+            // Force attaching bearer token to sb instance headers
+            sb.postgrest.headers['Authorization'] = 'Bearer ' + sess.access_token;
+          }
 
-          // 2. Run query
           var q = sb.from(table).select('*');
           if (filters) {
             for (var k in filters) q = q.eq(k, filters[k]);
