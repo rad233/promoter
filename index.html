@@ -8312,7 +8312,7 @@
             S.exams[e.code] = { title: e.title, code: e.code, duration: e.duration || 150, hasAudio: e.has_audio, tasks: e.tasks || [], info: e.info || '', parsedExam: e.parsed_exam || null, pts: e.pts || 70, audioURL: e.audio_url || null };
             S.examCodes[e.code] = true;
             // Load answer key
-            if (e.answer_key && Object.keys(e.answer_key).length) {
+            if (e.answer_key && Object.keys(e.answer_key).length > 0) {
               if (!S.answerKey) S.answerKey = {};
               Object.assign(S.answerKey, e.answer_key);
             }
