@@ -4706,19 +4706,33 @@
       async function dbGet(table, filters) {
         try {
           var session = (await sb.auth.getSession()).data.session;
-          if (session?.access_token) {
-            sb.rest.headers['Authorization'] = 'Bearer ' + session.access_token;
+          var token = session?.access_token;
+
+          // Construct query parameters for filters
+          var queryParams = new URLSearchParams({ select: '*' });
+          if (filters) {
+            for (var k in filters) {
+              queryParams.append(k, 'eq.' + filters[k]);
+            }
           }
 
-          var q = sb.from(table).select('*');
-          if (filters) {
-            for (var k in filters) q = q.eq(k, filters[k]);
+          var url = SUPA_URL + '/rest/v1/' + table + '?' + queryParams.toString();
+          var headers = {
+            'apikey': SUPA_KEY,
+            'Content-Type': 'application/json'
+          };
+
+          if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
           }
-          var { data, error } = await q;
-          if (error) {
-            console.error('dbGet ERROR', table, error);
+
+          var response = await fetch(url, { method: 'GET', headers: headers });
+          if (!response.ok) {
+            console.error('dbGet ERROR', table, await response.text());
             return [];
           }
+
+          var data = await response.json();
           return data || [];
         } catch (e) {
           console.error('dbGet EXCEPTION', table, e);
