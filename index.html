@@ -4706,11 +4706,11 @@
       async function dbGet(table, filters) {
         try {
           var session = (await sb.auth.getSession()).data.session;
-          var headers = session?.access_token
-            ? { Authorization: 'Bearer ' + session.access_token }
-            : {};
+          if (session?.access_token) {
+            sb.rest.headers['Authorization'] = 'Bearer ' + session.access_token;
+          }
 
-          var q = sb.from(table).select('*', { headers: headers });
+          var q = sb.from(table).select('*');
           if (filters) {
             for (var k in filters) q = q.eq(k, filters[k]);
           }
