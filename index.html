@@ -4286,6 +4286,10 @@
         });
 
         if (data && data.user && !error) {
+          // Set admin status & load data from Supabase
+          S.adminAuth = true;
+          if (typeof loadAllData === 'function') await loadAllData();
+
           // Hide auth card and load admin dashboard modules
           if (typeof showPage === 'function') showPage('page-admin');
           if (document.getElementById('landing-header')) document.getElementById('landing-header').style.display = 'none';
@@ -8361,11 +8365,13 @@
           renderStudentResults();
         }
         // Refresh all admin panels if admin is logged in
-        refreshStudentsTable();
-        refreshCodesTable();
-        renderExamList();
-        renderSchedTable();
-        updateAdminDashboard();
+        if (S.adminAuth) {
+          refreshStudentsTable();
+          refreshCodesTable();
+          renderExamList();
+          renderSchedTable();
+          updateAdminDashboard();
+        }
       }
 
       // ── Student Auth ─────────────────────────────────────────────────────────────
