@@ -4705,13 +4705,12 @@
 
       async function dbGet(table, filters) {
         try {
-          var sess = (await sb.auth.getSession()).data.session;
-          if (sess?.access_token) {
-            // Force attaching bearer token to sb instance headers
-            sb.postgrest.headers['Authorization'] = 'Bearer ' + sess.access_token;
-          }
+          var session = (await sb.auth.getSession()).data.session;
+          var headers = session?.access_token
+            ? { Authorization: 'Bearer ' + session.access_token }
+            : {};
 
-          var q = sb.from(table).select('*');
+          var q = sb.from(table).select('*', { headers: headers });
           if (filters) {
             for (var k in filters) q = q.eq(k, filters[k]);
           }
