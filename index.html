@@ -4704,7 +4704,25 @@
       }
 
       async function dbGet(table, filters) {
-        try { var q = sb.from(table).select('*'); if (filters) { for (var k in filters) q = q.eq(k, filters[k]); } var { data, error } = await q; if (error) { console.error('dbGet', table, error); return []; } return data || []; } catch (e) { console.error('dbGet err', e); return []; }
+        try {
+          // 1. Ensure active session is loaded onto client headers
+          await sb.auth.getSession();
+
+          // 2. Run query
+          var q = sb.from(table).select('*');
+          if (filters) {
+            for (var k in filters) q = q.eq(k, filters[k]);
+          }
+          var { data, error } = await q;
+          if (error) {
+            console.error('dbGet ERROR', table, error);
+            return [];
+          }
+          return data || [];
+        } catch (e) {
+          console.error('dbGet EXCEPTION', table, e);
+          return [];
+        }
       }
       async function dbUpsert(table, row, conflict) {
         try {
