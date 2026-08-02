@@ -3331,31 +3331,44 @@
           <button class="nav-btn" onclick="doLogout()">Sign Out</button>
         </div>
       </nav>
-      <div id="pinned-ann" class="pinned-ann"
-        style="margin:18px 28px 0;max-width:824px;width:calc(100% - 56px);margin-left:auto;margin-right:auto;">
-        <span class="pin-badge"> Announcement</span>
-        <h4 id="pin-title">Welcome!</h4>
-        <p id="pin-body">Check your scheduled tests below. Good luck!</p>
-      </div>
-      <div id="ann-overlay" class="ann-overlay" onclick="closeAnn(event)">
-        <div class="ann-card">
-          <span class="ann-badge"> Notice</span>
-          <h3 id="ann-title">Welcome to English Promoter!</h3>
-          <p id="ann-body">Your exam portal is ready. Check your scheduled tests below.</p>
-          <button class="ann-close" onclick="closeAnn()">Got it</button>
+      <!-- STUDENT DASHBOARD ANNOUNCEMENTS & MAIN CONTENT -->
+      <div id="view-student-dashboard">
+
+        <!-- 1. Pinned Announcement Section -->
+        <div id="pinned-ann" class="pinned-ann"
+          style="margin:18px 28px 0;max-width:824px;width:calc(100% - 56px);margin-left:auto;margin-right:auto;">
+          <span class="pin-badge"> Announcement</span>
+          <h4 id="pin-title">Welcome!</h4>
+          <p id="pin-body">Check your scheduled tests below. Good luck!</p>
         </div>
-      </div>
-      <div class="dash-content">
-        <div class="welcome-strip">
-          <h2 id="s-welcome">Welcome </h2>
-          <p>Check your scheduled tests below. Good luck!</p>
+
+        <!-- 2. Pop-up Overlay Announcement (Optional / Important Notices) -->
+        <div id="ann-overlay" class="ann-overlay" onclick="closeAnn(event)" style="display: none;">
+          <div class="ann-card" onclick="event.stopPropagation()">
+            <span class="ann-badge">Notice</span>
+            <h3 id="ann-title">Welcome to English Promoter!</h3>
+            <p id="ann-body">Your exam portal is ready. Check your scheduled tests below.</p>
+            <button class="ann-close" onclick="closeAnn()">Got it</button>
+          </div>
         </div>
-        <h3 class="sec-title">Scheduled Tests</h3>
-        <div id="student-exam-list">
-          <div style="color:var(--gray-400);font-size:13px;padding:16px 0;">Loading exams...</div>
+
+        <!-- 3. Dashboard Body & Tests Section -->
+        <div class="dash-content">
+          <div class="welcome-strip">
+            <h2 id="s-welcome">Welcome</h2>
+            <p>Check your scheduled tests below. Good luck!</p>
+          </div>
+
+          <h3 class="sec-title">Scheduled Tests</h3>
+          <div id="student-exam-list">
+            <div style="color:var(--gray-400);font-size:13px;padding:16px 0;">Loading exams...</div>
+          </div>
+
+          <div id="student-results-section" style="display:none;"></div>
         </div>
-        <div id="student-results-section" style="display:none;"></div>
+
       </div>
+
     </div>
 
     <!-- UNLOCK MODAL -->
