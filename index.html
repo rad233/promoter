@@ -4943,9 +4943,13 @@
             el.style.background = '#f9f9f9';
             var authCard = document.getElementById('auth-card');
             if (authCard) authCard.style.display = 'none';
+            var landingHeader = document.getElementById('landing-header');
+            if (landingHeader) landingHeader.style.display = 'none';
           } else {
             var authCard = document.getElementById('auth-card');
             if (authCard) authCard.style.display = 'block';
+            var landingHeader = document.getElementById('landing-header');
+            if (landingHeader) landingHeader.style.display = 'block';
           }
         }
         var overlays = document.querySelectorAll('.overlay');
