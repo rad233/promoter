@@ -4941,6 +4941,11 @@
           el.style.display = 'flex';
           if (id === 'page-admin' || id === 'page-student') {
             el.style.background = '#f9f9f9';
+            var authCard = document.getElementById('auth-card');
+            if (authCard) authCard.style.display = 'none';
+          } else {
+            var authCard = document.getElementById('auth-card');
+            if (authCard) authCard.style.display = 'block';
           }
         }
         var overlays = document.querySelectorAll('.overlay');
