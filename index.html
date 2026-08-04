@@ -4941,6 +4941,9 @@
           el.style.display = 'flex';
           if (id === 'page-admin' || id === 'page-student') {
             el.style.background = '#f9f9f9';
+            if (id === 'page-student') {
+              window.scrollTo(0, 0);
+            }
             var authCard = document.getElementById('auth-card');
             if (authCard) authCard.style.display = 'none';
             var landingHeader = document.getElementById('landing-header');
