@@ -4936,9 +4936,9 @@
           pages[i].style.display = 'none';
         }
         var el = document.getElementById(id);
-        if (el) {
-          el.classList.add('active');
-          el.style.display = 'flex';
+        if (id) {
+          if (el) el.classList.add('active');
+          if (el) el.style.display = 'flex';
           if (id === 'page-admin' || id === 'page-student') {
             el.style.background = '#f9f9f9';
             if (id === 'page-student') {
