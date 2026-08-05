@@ -5041,10 +5041,15 @@
 
       // AUTH
       function switchTab(tab) {
-        document.getElementById('tab-login').className = 'auth-tab' + (tab === 'login' ? ' active' : '');
-        document.getElementById('tab-signup').className = 'auth-tab' + (tab === 'signup' ? ' active' : '');
-        document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
-        document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+        var tabLogin = document.getElementById('tab-login');
+        var tabSignup = document.getElementById('tab-signup');
+        var formLogin = document.getElementById('form-login');
+        var formSignup = document.getElementById('form-signup');
+
+        if (tabLogin) tabLogin.className = 'auth-tab' + (tab === 'login' ? ' active' : '');
+        if (tabSignup) tabSignup.className = 'auth-tab' + (tab === 'signup' ? ' active' : '');
+        if (formLogin) formLogin.style.display = tab === 'login' ? 'block' : 'none';
+        if (formSignup) formSignup.style.display = tab === 'signup' ? 'block' : 'none';
       }
 
       async function doLogout() {
