@@ -4935,25 +4935,32 @@
           pages[i].classList.remove('active');
           pages[i].style.display = 'none';
         }
+
         var el = document.getElementById(id);
+
         if (id) {
+          // --- 1. IF OPENING A PAGE (STUDENT / ADMIN) ---
           if (el) el.classList.add('active');
           if (el) el.style.display = 'flex';
+
           if (id === 'page-admin' || id === 'page-student') {
-            el.style.background = '#f9f9f9';
-            if (id === 'page-student') {
-              window.scrollTo(0, 0);
-            }
-            var authCard = document.getElementById('auth-card');
-            if (authCard) authCard.style.display = 'none';
-            var landingHeader = document.getElementById('landing-header');
-            if (landingHeader) landingHeader.style.display = 'none';
-          } else {
-            var authCard = document.getElementById('auth-card');
-            if (authCard) authCard.style.display = 'block';
-            var landingHeader = document.getElementById('landing-header');
-            if (landingHeader) landingHeader.style.display = 'block';
+            if (el) el.style.background = '#f9f9f9';
+            if (id === 'page-student') window.scrollTo(0, 0);
           }
+
+          // Hide auth card and landing header when a page is open
+          var authCard = document.getElementById('auth-card');
+          if (authCard) authCard.style.display = 'none';
+          var landingHeader = document.getElementById('landing-header');
+          if (landingHeader) landingHeader.style.display = 'none';
+
+        } else {
+          // --- 2. IF LOGGING OUT (id IS EMPTY '') ---
+          // Restore auth card and landing header
+          var authCard = document.getElementById('auth-card');
+          if (authCard) authCard.style.display = 'block';
+          var landingHeader = document.getElementById('landing-header');
+          if (landingHeader) landingHeader.style.display = 'block';
         }
         var overlays = document.querySelectorAll('.overlay');
         for (var j = 0; j < overlays.length; j++) {
