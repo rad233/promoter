@@ -5056,6 +5056,7 @@
         S.examStartTime = Date.now();
         clearInterval(S.timerInt); clearInterval(S.liveInt);
         showPage('');
+        switchTab('login');
         var liCode = document.getElementById('li-code'); if (liCode) liCode.value = '';
         var liPw = document.getElementById('li-pw'); if (liPw) liPw.value = '';
       }
