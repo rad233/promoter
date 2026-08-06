@@ -7949,7 +7949,7 @@
           var compKey2 = email + '|' + code;
           var wasCompleted = S.completed && S.completed[compKey2];
           if (wasCompleted) {
-            completedExams.push({ code: code, exam: ex, sched: sched, compData: S.completed[compKey2] || null });
+            completedExams.push({ code: code, exam: ex, compData: S.completed[compKey2] || null });
           }
         }
 
