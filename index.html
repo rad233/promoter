@@ -3433,6 +3433,9 @@
               </div>
             </div>
 
+            <!-- STUDENT RESULTS SECTION -->
+            <div id="student-results-section" style="display:none; grid-column: 1 / -1; margin-top: 24px;"></div>
+
             <!-- RIGHT SIDE: PAID TESTS -->
             <div>
               <h3
@@ -3819,6 +3822,13 @@
                     placeholder="English Language - Version 3"></div>
                 <div class="afl"><label>Exam Code</label><input type="text" id="eb-code" placeholder="EXAM2026-V3"
                     oninput="onExamCodeInput()"></div>
+                <!-- Free vs Paid Toggle -->
+                <div class="afl" style="margin-top: 15px;">
+                  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600;">
+                    <input type="checkbox" id="admin-exam-is-free" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>Free Exam (Instant access without unlock code)</span>
+                  </label>
+                </div>
                 <div class="afl"><label>Time Limit</label>
                   <div class="drum-wrap" id="time-drum-wrap">
                     <div class="drum-col">
@@ -5088,18 +5098,16 @@
       function renderStudentExams() {
         var container = document.getElementById('student-exam-list');
         if (!container) return;
-        var schedKeys = Object.keys(S.schedule || {});
+        var schedKeys = Object.keys(S.exams || {});
         if (!schedKeys.length) {
           container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;">No exams scheduled yet.</div>';
           return;
         }
         var html = '';
         schedKeys.forEach(function (code) {
-          var sc = S.schedule[code];
           var ex = S.exams[code];
           if (!ex) return;
-          var status = getExamStatus(sc.date, sc.time, sc.duration);
-          var dur = sc.duration || 150;
+          var dur = ex.duration || 150;
           var dh = Math.floor(dur / 60), dm = dur % 60;
           var durStr = (dh > 0 ? dh + 'h ' : '') + dm + ' min';
           var compKey = S.student.email + '|' + code;
@@ -5108,7 +5116,7 @@
           html += '<div class="exam-card">';
           html += '<div class="ec-head"><div>';
           html += '<div class="ec-title">' + ex.title + '</div>';
-          html += '<div class="ec-meta"><span>' + (sc.date || '') + ' &middot; ' + (sc.time || '') + '</span><span>' + durStr + '</span></div>';
+          html += '<div class="ec-meta"><span>Duration: ' + durStr + '</span></div>';
           html += '</div>';
           // Status badge
           if (isCompleted) {
@@ -5130,18 +5138,27 @@
           // Footer button
           html += '<div class="ec-foot">';
           if (isCompleted) {
-            html += '<button class="btn-sm btn-sm-outline" disabled>Submitted</button>';
-          } else if (status === 'live') {
-            html += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
-          } else if (status === 'upcoming') {
-            var info = ex.info ? ex.info : 'No info added.';
-            html += '<button class="btn-sm btn-sm-outline" onclick="showInfoModal(\'' + code + '\')">View Info</button>';
+            html += '<button class="btn-sm btn-sm-outline" onclick="document.getElementById(\'student-results-section\').scrollIntoView({behavior: \'smooth\'})">See My Results &rarr;</button>';
+          } else if (ex.is_free) {
+            // FREE: Direct start without unlock modal
+            html += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
           } else {
-            html += '<button class="btn-sm btn-sm-outline" disabled>Exam Ended</button>';
+            // PAID: Immediate access, opens standard unlock modal
+            html += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
           }
           html += '</div></div>';
         });
         container.innerHTML = html || '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;">No exams scheduled yet.</div>';
+      }
+
+      function startFreeExam(code) {
+        S.currentExamCode = code;
+        // Loads the exam directly into the viewer
+        if (typeof openExam === 'function') {
+          openExam(code);
+        } else if (typeof startExam === 'function') {
+          startExam(code);
+        }
       }
 
       // FORGOT PASSWORD
@@ -6303,6 +6320,8 @@
         if (!title || !code) { showToast('Please fill in exam title and code', ''); return; }
         var upperCode = code.toUpperCase();
         var pts = document.getElementById('eb-pts') ? (parseInt(document.getElementById('eb-pts').value) || 70) : 70;
+        var isFreeEl = document.getElementById('admin-exam-is-free');
+        var isFree = isFreeEl ? isFreeEl.checked : false;
 
         var codeElHtml = document.getElementById('eb-code');
         var editingCode = codeElHtml ? codeElHtml.getAttribute('data-editing') : null;
@@ -6314,7 +6333,7 @@
 
         // Save exam — strip parsed_exam to reduce payload size if too large
         var parsedExamToSave = S.parsedExam || null;
-        var examRow = { code: upperCode, title: title, duration: duration, info: infoText, has_audio: !!(S.audioURL), tasks: S.parsedTasks || [], answer_key: S.answerKey || {}, pts: pts, audio_url: S.audioURL || null };
+        var examRow = { code: upperCode, title: title, duration: duration, info: infoText, has_audio: !!(S.audioURL), tasks: S.parsedTasks || [], answer_key: S.answerKey || {}, pts: pts, audio_url: S.audioURL || null, is_free: isFree };
         // Try with parsed_exam first, fall back without if it fails
         var ok = await dbUpsert('exams', Object.assign({}, examRow, { parsed_exam: parsedExamToSave }), 'code');
         if (!ok) {
@@ -7927,12 +7946,9 @@
         for (var i = 0; i < examKeys.length; i++) {
           var code = examKeys[i];
           var ex = S.exams[code];
-          var sched = S.schedule && S.schedule[code];
-          if (!sched) continue;
-          var status = getExamStatus(sched.date, sched.time, sched.duration);
           var compKey2 = email + '|' + code;
           var wasCompleted = S.completed && S.completed[compKey2];
-          if (status === 'ended' || wasCompleted) {
+          if (wasCompleted) {
             completedExams.push({ code: code, exam: ex, sched: sched, compData: S.completed[compKey2] || null });
           }
         }
@@ -8030,7 +8046,7 @@
             + '<div class="ec-head">'
             + '<div>'
             + '<div class="ec-title">' + ex.title + ' ' + statusBadge + '</div>'
-            + '<div class="ec-meta"><span>' + (item.sched.date || '') + '</span>' + (metaTime ? '<span>' + metaTime + '</span>' : '') + '</div>'
+            + '<div class="ec-meta"><span>Completed Exam</span>' + '</span>' + (metaTime ? '<span>' + metaTime + '</span>' : '') + '</div>'
             + '</div>'
             + (allGraded ? '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
               + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Report Card</button>' : '')
