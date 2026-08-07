@@ -3320,6 +3320,21 @@
     </div>
   </div>
 
+  <!-- STUDENT RESULTS PAGE -->
+  <div id="page-student-results" class="page" style="display: none;">
+    <!-- Back Button Header -->
+    <div style="margin-bottom: 20px;">
+      <button class="btn-sm btn-sm-outline" onclick="backToDashboard()">
+        &larr; Back to Dashboard
+      </button>
+    </div>
+
+    <h2>My Exam Results</h2>
+
+    <!-- Container where JavaScript will inject the actual results -->
+    <div id="student-results-content"></div>
+  </div>
+
   <!-- STUDENT DASHBOARD -->
   <div id="page-student" class="page">
     <nav class="top-nav">
@@ -4289,6 +4304,39 @@
           document.getElementById('tab-register').style.color = '#3a3a3a';
         }
       }
+      // Open the dedicated results view
+      function showResultsPage(code) {
+        // Hide main student dashboard / active pages
+        var activePages = document.querySelectorAll('.page');
+        activePages.forEach(function (page) {
+          page.style.display = 'none';
+        });
+
+        // Show the results page
+        var resultsPage = document.getElementById('page-student-results');
+        if (resultsPage) {
+          resultsPage.style.display = 'block';
+        }
+
+        // Load/render results for this specific exam code
+        if (typeof loadExamResults === 'function') {
+          loadExamResults(code);
+        }
+      }
+
+      // Return to main student dashboard
+      function backToDashboard() {
+        var resultsPage = document.getElementById('page-student-results');
+        if (resultsPage) {
+          resultsPage.style.display = 'none';
+        }
+
+        // Show main student page view
+        var mainPage = document.getElementById('page-student');
+        if (mainPage) {
+          mainPage.style.display = 'block';
+        }
+      }
       function handleSignupWithValidation() {
         var name = document.getElementById('su-name') ? document.getElementById('su-name').value.trim() : '';
         var email1 = document.getElementById('su-email') ? document.getElementById('su-email').value.trim() : '';
@@ -5105,7 +5153,7 @@
           // Footer button
           cardHtml += '<div class="ec-foot">';
           if (isCompleted) {
-            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="document.getElementById(\'student-results-section\').scrollIntoView({behavior: \'smooth\'})">See My Results &rarr;</button>';
+            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
           } else if (ex.is_free) {
             // FREE: Direct start without unlock modal
             cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
