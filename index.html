@@ -4311,6 +4311,9 @@
           resultsPage.style.display = 'block';
         }
 
+        //Scroll smoothly to the top of the page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         // Load/render results for this specific exam code
         if (typeof _doRenderStudentResults === 'function') {
           _doRenderStudentResults();
