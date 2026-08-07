@@ -3328,7 +3328,7 @@
       </button>
     </div>
     <h2>My Exam Results</h2>
-    <div id="student-results-content"></div>
+    <div id="student-results-section"></div>
   </div>
 
   <!-- STUDENT DASHBOARD -->
@@ -4312,8 +4312,8 @@
         }
 
         // Load/render results for this specific exam code
-        if (typeof loadExamResults === 'function') {
-          loadExamResults(code);
+        if (typeof _doRenderStudentResults === 'function') {
+          _doRenderStudentResults();
         }
       }
 
