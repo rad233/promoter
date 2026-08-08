@@ -6406,7 +6406,7 @@
         }
 
         S.examCodes[upperCode] = true;
-        S.exams[upperCode] = { title: title, code: upperCode, duration: duration, hasAudio: !!(S.audioURL), tasks: S.parsedTasks || [], info: infoText, pts: pts, audioURL: S.audioURL || null };
+        S.exams[upperCode] = { title: title, code: upperCode, duration: duration, hasAudio: !!(S.audioURL), tasks: S.parsedTasks || [], info: infoText, pts: pts, audioURL: S.audioURL || null, is_free: isFree };
 
         if (window._ebGeneratedIDs && window._ebGeneratedIDs.length) {
           S.examIDs[upperCode] = window._ebGeneratedIDs.slice();
