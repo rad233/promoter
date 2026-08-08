@@ -3604,6 +3604,31 @@
       </div>
     </div>
 
+    <!-- VIEW ANSWERS OVERLAY -->
+    <div id="view-answers-modal" class="modal-overlay"
+      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:99999; justify-content:center; align-items:center;">
+      <div class="modal-card"
+        style="background:#fff; border-radius:12px; padding:24px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:12px; margin-bottom:16px;">
+          <h3 style="margin:0; font-size:1.25rem;" id="vam-title">Answer Breakdown</h3>
+          <button onclick="closeAnswersModal()"
+            style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#666;">&times;</button>
+        </div>
+
+        <!-- Task Tabs / Selector -->
+        <div id="vam-task-tabs" style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;"></div>
+
+        <!-- Questions List Container -->
+        <div id="vam-questions-list"></div>
+
+        <div style="margin-top:20px; text-align:right;">
+          <button onclick="closeAnswersModal()"
+            style="padding:8px 16px; border-radius:6px; background:#6c757d; color:#fff; border:none; cursor:pointer;">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== SUBMIT SUCCESS OVERLAY ===== -->
     <div id="submit-success-overlay"
       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px;">
@@ -4918,6 +4943,23 @@
       }
       async function dbUpsert(table, row, conflict) {
         try {
+          if (table === 'exams') {
+            var { data, error } = await sb.rpc('admin_upsert_exam', {
+              p_code: row.code,
+              p_title: row.title,
+              p_duration: row.duration || 155,
+              p_info: row.info || '',
+              p_has_audio: row.has_audio ?? true,
+              p_tasks: row.tasks || [],
+              p_parsed_exam: row.parsed_exam || {},
+              p_answer_key: row.answer_key || {},
+              p_pts: row.pts || 70,
+              p_audio_url: row.audio_url || '',
+              p_is_free: row.is_free ?? false
+            });
+            if (error) { console.error('dbUpsert RPC ERROR', table, error.message); return false; }
+            return true;
+          }
           var q = sb.from(table).upsert(row, conflict ? { onConflict: conflict } : {});
           var { data, error } = await q;
           if (error) { console.error('dbUpsert ERROR', table, error.message, error.details, error.hint); return false; }
@@ -7194,8 +7236,73 @@
             var elapsedStr = (eh > 0 ? eh + 'h ' : '') + em + 'm';
             var compKey = S.student.email + '|' + S.activeExamCode;
             var answers = JSON.parse(JSON.stringify(S.answers));
-            S.completed[compKey] = { elapsedStr: elapsedStr, submittedAt: new Date().toISOString(), answers: answers };
-            await dbUpsert('submissions', { student_email: S.student.email, exam_code: S.activeExamCode, answers: answers, elapsed_str: elapsedStr, exam_start_time: S.examStartTime || 0, submitted_at: new Date().toISOString() }, 'student_email,exam_code');
+            // Get active exam object and check if it's a free test
+            var curExam = (S.exams && S.exams[S.activeExamCode]) ? S.exams[S.activeExamCode] : null;
+            var isFreeExam = curExam ? (curExam.is_free === true || curExam.isFree === true) : false;
+            var autoGradedData = null;
+
+            if (isFreeExam && curExam && curExam.answerKey) {
+              var calculatedScore = 0;
+              var totalPossible = 0;
+              var taskBreakdown = {};
+
+              // Loop through tasks in answerKey (t1, t2, etc.)
+              Object.keys(curExam.answerKey).forEach(function (tKey) {
+                var keyObj = curExam.answerKey[tKey];
+                var studentTaskAns = answers[tKey] || {};
+                var taskCorrect = 0;
+                var taskMax = 0;
+
+                if (keyObj && typeof keyObj === 'object') {
+                  Object.keys(keyObj).forEach(function (qNum) {
+                    taskMax++;
+                    var given = studentTaskAns[qNum] ? String(studentTaskAns[qNum]).trim().toLowerCase() : '';
+                    var target = keyObj[qNum] ? String(keyObj[qNum]).trim().toLowerCase() : '';
+                    if (given && given === target) {
+                      taskCorrect++;
+                    }
+                  });
+                }
+
+                calculatedScore += taskCorrect;
+                totalPossible += taskMax;
+                taskBreakdown[tKey] = { score: taskCorrect, max: taskMax };
+              });
+
+              autoGradedData = {
+                score: calculatedScore,
+                total: totalPossible,
+                breakdown: taskBreakdown,
+                status: 'GRADED'
+              };
+            }
+            // Build submission payload
+            var dbPayload = {
+              student_email: S.student.email,
+              exam_code: S.activeExamCode,
+              answers: answers,
+              elapsed_str: elapsedStr,
+              exam_start_time: S.examStartTime || 0,
+              submitted_at: new Date().toISOString()
+            };
+
+            // If auto-graded (free exam), append score details and mark status as GRADED
+            if (autoGradedData) {
+              dbPayload.status = 'GRADED';
+              dbPayload.score = autoGradedData.score;
+              dbPayload.total_score = autoGradedData.total;
+              dbPayload.score_details = autoGradedData.breakdown;
+            }
+
+            // Save locally and in database
+            S.completed[compKey] = {
+              elapsedStr: elapsedStr,
+              submittedAt: new Date().toISOString(),
+              answers: answers,
+              graded: autoGradedData
+            };
+
+            await dbUpsert('submissions', dbPayload, 'student_email,exam_code');
           }
         } catch (e) {
           console.error("doSubmit error:", e);
@@ -7208,6 +7315,114 @@
             btn.textContent = 'Okay, return to dashboard';
           }
         }
+      }
+      // Active exam answer review state
+      window._vamActiveExamCode = null;
+      window._vamActiveTask = null;
+
+      function openAnswersModal(examCode) {
+        var exam = (S.exams && S.exams[examCode]) ? S.exams[examCode] : null;
+        if (!exam) return;
+
+        var compKey = S.student.email + '|' + examCode;
+        var sub = S.completed ? S.completed[compKey] : null;
+        var studentAns = sub ? sub.answers : (S.answers || {});
+
+        window._vamActiveExamCode = examCode;
+
+        // Set modal title
+        var titleEl = document.getElementById('vam-title');
+        if (titleEl) titleEl.textContent = (exam.title || examCode) + ' - Answer Review';
+
+        // Get available tasks from answerKey (e.g. ['t1', 't2', 't3'...])
+        var answerKey = exam.answerKey || {};
+        var taskKeys = Object.keys(answerKey);
+
+        if (taskKeys.length === 0) {
+          document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No answer key available for this test.</p>';
+          document.getElementById('view-answers-modal').style.display = 'flex';
+          return;
+        }
+
+        // Render Task Tab Buttons
+        var tabsHtml = '';
+        taskKeys.forEach(function (tKey, idx) {
+          var taskLabel = 'Task ' + tKey.replace('t', '');
+          tabsHtml += '<button id="vam-tab-' + tKey + '" onclick="switchAnswersTask(\'' + tKey + '\')" style="padding:6px 12px; border-radius:6px; border:1px solid #ddd; background:#f5f5f5; cursor:pointer; font-weight:600;">' + taskLabel + '</button>';
+        });
+        document.getElementById('vam-task-tabs').innerHTML = tabsHtml;
+
+        // Show modal and switch to first task
+        document.getElementById('view-answers-modal').style.display = 'flex';
+        switchAnswersTask(taskKeys[0]);
+      }
+
+      function switchAnswersTask(tKey) {
+        window._vamActiveTask = tKey;
+        var examCode = window._vamActiveExamCode;
+        var exam = S.exams[examCode];
+        var compKey = S.student.email + '|' + examCode;
+        var sub = S.completed ? S.completed[compKey] : null;
+        var studentAns = (sub && sub.answers) ? sub.answers : {};
+
+        // Highlight active tab
+        var answerKey = exam.answerKey || {};
+        Object.keys(answerKey).forEach(function (tk) {
+          var tabBtn = document.getElementById('vam-tab-' + tk);
+          if (tabBtn) {
+            if (tk === tKey) {
+              tabBtn.style.background = 'var(--pink, #007bff)';
+              tabBtn.style.color = '#fff';
+              tabBtn.style.borderColor = 'transparent';
+            } else {
+              tabBtn.style.background = '#f5f5f5';
+              tabBtn.style.color = '#333';
+              tabBtn.style.borderColor = '#ddd';
+            }
+          }
+        });
+
+        // Render question comparison list for selected task
+        var taskKeyObj = answerKey[tKey] || {};
+        var studentTaskAns = studentAns[tKey] || {};
+        var qNums = Object.keys(taskKeyObj);
+
+        if (qNums.length === 0) {
+          document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
+          return;
+        }
+
+        var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
+
+        qNums.forEach(function (qNum) {
+          var target = String(taskKeyObj[qNum] || '').trim().toUpperCase();
+          var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
+          var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+
+          listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
+          listHtml += '  <div>';
+          listHtml += '    <strong style="font-size:0.95rem; color:#333;">Question ' + qNum + '</strong>';
+          listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
+
+          if (isCorrect) {
+            listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
+          } else {
+            listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
+          }
+
+          listHtml += '    </div>';
+          listHtml += '  </div>';
+          listHtml += '  <div style="font-size:1.2rem;">' + (isCorrect ? '✔️' : '❌') + '</div>';
+          listHtml += '</div>';
+        });
+
+        listHtml += '</div>';
+        document.getElementById('vam-questions-list').innerHTML = listHtml;
+      }
+
+      function closeAnswersModal() {
+        var modal = document.getElementById('view-answers-modal');
+        if (modal) modal.style.display = 'none';
       }
       function closeSubmitSuccess() {
         document.getElementById('submit-success-overlay').style.display = 'none';
@@ -7980,6 +8195,7 @@
           var ex = item.exam;
           var gradeKey = email + '|' + code;
           var grades = S.grades[gradeKey] || {};
+          var isFreeExam = ex ? (ex.is_free === true || ex.isFree === true) : false;
 
           // Also merge essay grade stored under email|ESSAY key (legacy)
           var essayGrades = S.grades[email + '|ESSAY'] || {};
@@ -8059,15 +8275,27 @@
           var compInfo = item.compData;
           var metaTime = compInfo ? 'Completed in ' + compInfo.elapsedStr : '';
 
+          // Check if "View My Answers" should be shown (always for free exams, or for paid exams once all graded)
+          var showViewAnswers = isFreeExam || allGraded;
+
+          var actionButtons = '<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">';
+          if (allGraded) {
+            actionButtons += '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
+              + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Report Card</button>';
+          }
+          if (showViewAnswers) {
+            actionButtons += '<button class="btn-sm btn-sm-outline" onclick="openAnswersModal(\'' + code + '\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;background:var(--pink, #007bff);color:#fff;border:none;cursor:pointer;border-radius:6px;">'
+              + 'View My Answers</button>';
+          }
+          actionButtons += '</div>';
+
           html2 += '<div class="exam-card">'
             + '<div class="ec-head">'
             + '<div>'
             + '<div class="ec-title">' + ex.title + ' ' + statusBadge + '</div>'
-            + '<div class="ec-meta"><span>Completed Exam</span>' + '</span>' + (metaTime ? '<span>' + metaTime + '</span>' : '') + '</div>'
+            + '<div class="ec-meta"><span>Completed Exam</span>' + (metaTime ? '<span>' + metaTime + '</span>' : '') + '</div>'
             + '</div>'
-            + (allGraded ? '<button class="btn-sm btn-sm-outline" onclick="downloadResultPDF(\'' + code + '\')" style="margin-top:4px;display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;">'
-              + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Report Card</button>' : '')
-            + '</div>'
+            + actionButtons
             + '</div>'
             + '<div class="results-grid">' + taskCards + totalCard + '</div>'
             + '</div>';
