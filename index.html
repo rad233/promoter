@@ -5181,6 +5181,10 @@
           cardHtml += '<div class="ec-title">' + ex.title + '</div>';
           cardHtml += '<div class="ec-meta"><span>Duration: ' + durStr + '</span></div>';
           cardHtml += '</div>';
+
+          // Helper boolean for free check
+          var isFreeExam = ex.is_free === true || ex.is_free === 'true' || ex.is_free === 1;
+
           // Status badge
           if (isCompleted) {
             cardHtml += '<span class="ec-status s-done">Completed</span>';
@@ -5192,7 +5196,7 @@
           cardHtml += '<div class="ec-foot">';
           if (isCompleted) {
             cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
-          } else if (ex.is_free) {
+          } else if (isFreeExam) {
             // FREE: Direct start without unlock modal
             cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
           } else {
@@ -5200,7 +5204,7 @@
             cardHtml += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
           }
           cardHtml += '</div></div>';
-          if (ex.is_free) {
+          if (isFreeExam) {
             freeHtml += cardHtml;
           } else {
             paidHtml += cardHtml;
