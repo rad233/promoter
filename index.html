@@ -5175,35 +5175,44 @@
           var durStr = (dh > 0 ? dh + 'h ' : '') + dm + ' min';
           var compKey = S.student.email + '|' + code;
           var isCompleted = S.completed[compKey];
-          // Build card
-          var cardHtml = '<div class="exam-card">';
-          cardHtml += '<div class="ec-head"><div>';
-          cardHtml += '<div class="ec-title">' + ex.title + '</div>';
-          cardHtml += '<div class="ec-meta"><span>Duration: ' + durStr + '</span></div>';
-          cardHtml += '</div>';
+          // 1. Card Pill Container
+          var cardHtml = '<div style="display:flex;align-items:center;justify-content:space-between;background:#eeece8;border-radius:999px;padding:8px 10px 8px 18px;font-weight:700;margin-bottom:12px;color:#222;">';
+
+          // 2. Left Side: Icon + Title
+          cardHtml += '  <div style="display:flex;align-items:center;gap:10px;overflow:hidden;padding-right:8px;">';
+
+          // Show Shield Icon for locked paid tests, Document Icon for free/unlocked
+          if (!isFreeExam && !isUnlocked && !isCompleted) {
+            cardHtml += '    <div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1.5px solid #222;border-radius:8px;flex-shrink:0;">';
+            cardHtml += '      <svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="11" width="6" height="5" rx="1"/></svg>';
+            cardHtml += '    </div>';
+          } else {
+            cardHtml += '    <div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1.5px solid #222;border-radius:8px;flex-shrink:0;">';
+            cardHtml += '      <svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+            cardHtml += '    </div>';
+          }
+
+          cardHtml += '    <span style="font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.title + '</span>';
+          cardHtml += '  </div>';
 
           // Helper boolean for free check
           var isFreeExam = ex.is_free === true || ex.is_free === 'true' || ex.is_free === 1;
 
-          // Status badge
+          // 3. Right Side: Button Action
+          cardHtml += '  <div style="flex-shrink:0;">';
+
           if (isCompleted) {
-            cardHtml += '<span class="ec-status s-done">Completed</span>';
+            cardHtml += '    <button onclick="showResultsPage(\'' + code + '\')" style="background:#4a4a4a;color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">See Results</button>';
+          } else if (isFreeExam || isUnlocked) {
+            cardHtml += '    <button onclick="startExam(\'' + code + '\')" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Start</button>';
           } else {
-            cardHtml += '<span class="ec-status s-upcoming">Available</span>';
+            cardHtml += '    <button onclick="showUnlock()" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Unlock</button>';
           }
+
+          cardHtml += '  </div>';
+
+          // 4. Close Pill Card
           cardHtml += '</div>';
-          // Footer button
-          cardHtml += '<div class="ec-foot">';
-          if (isCompleted) {
-            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
-          } else if (isFreeExam) {
-            // FREE: Direct start without unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
-          } else {
-            // PAID: Immediate access, opens standard unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
-          }
-          cardHtml += '</div></div>';
           if (isFreeExam) {
             freeHtml += cardHtml;
           } else {
