@@ -5230,6 +5230,18 @@
         S.activeExamCode = code;
         S.currentExamCode = code;
 
+        // 1. Calculate duration in seconds (defaults to 150 mins if not set)
+        var durMinutes = ex.duration || 150;
+        var totalSeconds = durMinutes * 60;
+
+        // 2. Clear any rigid schedule timer for this free exam so it starts fresh NOW
+        if (S.schedule && S.schedule[code]) {
+          delete S.schedule[code];
+        }
+
+        // 3. Set the active timer state to the full duration
+        S.timeLeft = totalSeconds;
+
         // Set audio & answer key state if available
         if (ex.audio_url) { S.audioURL = ex.audio_url; window.S_audioURL = ex.audio_url; }
         if (ex.answer_key) { if (!S.answerKey) S.answerKey = {}; Object.assign(S.answerKey, ex.answer_key); }
