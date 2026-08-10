@@ -5175,23 +5175,6 @@
           var durStr = (dh > 0 ? dh + 'h ' : '') + dm + ' min';
           var compKey = S.student.email + '|' + code;
           var isCompleted = S.completed[compKey];
-          // Build card
-          var cardHtml = '<div class="exam-card">';
-          cardHtml += '<div class="ec-head"><div>';
-          cardHtml += '<div class="ec-title">' + ex.title + '</div>';
-          cardHtml += '<div class="ec-meta"><span>Duration: ' + durStr + '</span></div>';
-          cardHtml += '</div>';
-
-          // Helper boolean for free check
-          var isFreeExam = ex.is_free === true || ex.is_free === 'true' || ex.is_free === 1;
-
-          // Status badge
-          if (isCompleted) {
-            cardHtml += '<span class="ec-status s-done">Completed</span>';
-          } else {
-            cardHtml += '<span class="ec-status s-upcoming">Available</span>';
-          }
-          cardHtml += '</div>';
           // 1. Pill Container Start
           var cardHtml = '<div style="display:flex;align-items:center;justify-content:space-between;background:#eeece8;border-radius:999px;padding:8px 10px 8px 18px;font-weight:700;margin-bottom:12px;color:#222;">';
 
@@ -5211,6 +5194,29 @@
 
           cardHtml += '    <span style="font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.title + '</span>';
           cardHtml += '  </div>';
+
+          // Helper boolean for free check
+          var isFreeExam = ex.is_free === true || ex.is_free === 'true' || ex.is_free === 1;
+
+          // Status badge
+          if (isCompleted) {
+            cardHtml += '<span class="ec-status s-done">Completed</span>';
+          } else {
+            cardHtml += '<span class="ec-status s-upcoming">Available</span>';
+          }
+          cardHtml += '</div>';
+          // Footer button
+          cardHtml += '<div class="ec-foot">';
+          if (isCompleted) {
+            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
+          } else if (isFreeExam) {
+            // FREE: Direct start without unlock modal
+            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
+          } else {
+            // PAID: Immediate access, opens standard unlock modal
+            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
+          }
+          cardHtml += '</div></div>';
           if (isFreeExam) {
             freeHtml += cardHtml;
           } else {
