@@ -5224,6 +5224,7 @@
       }
 
       function startFreeExam(code) {
+        S.activeExamCode = code;
         S.currentExamCode = code;
         // Loads the exam directly into the viewer
         if (typeof openExam === 'function') {
