@@ -5192,18 +5192,25 @@
             cardHtml += '<span class="ec-status s-upcoming">Available</span>';
           }
           cardHtml += '</div>';
-          // Footer button
-          cardHtml += '<div class="ec-foot">';
-          if (isCompleted) {
-            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
-          } else if (isFreeExam) {
-            // FREE: Direct start without unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
+          // 1. Pill Container Start
+          var cardHtml = '<div style="display:flex;align-items:center;justify-content:space-between;background:#eeece8;border-radius:999px;padding:8px 10px 8px 18px;font-weight:700;margin-bottom:12px;color:#222;">';
+
+          // 2. Left Side: Icon + Title
+          cardHtml += '  <div style="display:flex;align-items:center;gap:10px;overflow:hidden;padding-right:8px;">';
+
+          // Icon (Shield for locked paid, Document for free or unlocked)
+          if (!isFreeExam && !isCompleted) {
+            cardHtml += '    <div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1.5px solid #222;border-radius:8px;flex-shrink:0;">';
+            cardHtml += '      <svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="11" width="6" height="5" rx="1"/></svg>';
+            cardHtml += '    </div>';
           } else {
-            // PAID: Immediate access, opens standard unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
+            cardHtml += '    <div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1.5px solid #222;border-radius:8px;flex-shrink:0;">';
+            cardHtml += '      <svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+            cardHtml += '    </div>';
           }
-          cardHtml += '</div></div>';
+
+          cardHtml += '    <span style="font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.title + '</span>';
+          cardHtml += '  </div>';
           if (isFreeExam) {
             freeHtml += cardHtml;
           } else {
