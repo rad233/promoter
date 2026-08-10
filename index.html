@@ -5198,25 +5198,21 @@
           // Helper boolean for free check
           var isFreeExam = ex.is_free === true || ex.is_free === 'true' || ex.is_free === 1;
 
-          // Status badge
+          // 3. Right Side: Button Action
+          cardHtml += '  <div style="flex-shrink:0;">';
+
           if (isCompleted) {
-            cardHtml += '<span class="ec-status s-done">Completed</span>';
+            cardHtml += '    <button onclick="showResultsPage(\'' + code + '\')" style="background:#4a4a4a;color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">See Results</button>';
+          } else if (isFreeExam || isUnlocked) {
+            cardHtml += '    <button onclick="startExam(\'' + code + '\')" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Start</button>';
           } else {
-            cardHtml += '<span class="ec-status s-upcoming">Available</span>';
+            cardHtml += '    <button onclick="showUnlock()" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Unlock</button>';
           }
+
+          cardHtml += '  </div>';
+
+          // 4. Close Pill Card
           cardHtml += '</div>';
-          // Footer button
-          cardHtml += '<div class="ec-foot">';
-          if (isCompleted) {
-            cardHtml += '<button class="btn-sm btn-sm-outline" onclick="showResultsPage(\'' + code + '\')">See My Results &rarr;</button>';
-          } else if (isFreeExam) {
-            // FREE: Direct start without unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="startFreeExam(\'' + code + '\')">Start Exam &rarr;</button>';
-          } else {
-            // PAID: Immediate access, opens standard unlock modal
-            cardHtml += '<button class="btn-sm btn-sm-pink" onclick="showUnlock()">Unlock &amp; Start &rarr;</button>';
-          }
-          cardHtml += '</div></div>';
           if (isFreeExam) {
             freeHtml += cardHtml;
           } else {
