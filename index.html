@@ -5261,15 +5261,18 @@
         // Launch the exam UI
         startExam();
 
-        // 5. FORCE SHOW PAGE EXAM (Fixes offsetHeight: 0)
-        var pageEl = document.getElementById('page-exam');
-        if (pageEl) {
-          // Hide all other pages
-          document.querySelectorAll('.page').forEach(function (p) { p.style.display = 'none'; p.classList.remove('active'); });
+        // 5. FORCE SHOW STUDENT PAGE & EXAM PAGE (Fixes nested display: none)
+        var studentPage = document.getElementById('page-student');
+        var examPage = document.getElementById('page-exam');
 
-          // Show exam page
-          pageEl.style.display = 'block';
-          pageEl.classList.add('active');
+        if (studentPage) {
+          studentPage.style.display = 'block';
+          studentPage.classList.add('active');
+        }
+
+        if (examPage) {
+          examPage.style.display = 'block';
+          examPage.classList.add('active');
         }
       }
 
