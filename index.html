@@ -5260,6 +5260,17 @@
 
         // Launch the exam UI
         startExam();
+
+        // 5. FORCE SHOW PAGE EXAM (Fixes offsetHeight: 0)
+        var pageEl = document.getElementById('page-exam');
+        if (pageEl) {
+          // Hide all other pages
+          document.querySelectorAll('.page').forEach(function (p) { p.style.display = 'none'; p.classList.remove('active'); });
+
+          // Show exam page
+          pageEl.style.display = 'block';
+          pageEl.classList.add('active');
+        }
       }
 
       // FORGOT PASSWORD
