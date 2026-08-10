@@ -5246,9 +5246,16 @@
         if (ex.audio_url) { S.audioURL = ex.audio_url; window.S_audioURL = ex.audio_url; }
         if (ex.answer_key) { if (!S.answerKey) S.answerKey = {}; Object.assign(S.answerKey, ex.answer_key); }
 
-        // Build TASKS and parse questions before starting
+        // 3. Parse JSON safely and set S.parsedExam
         if (ex.parsed_exam) {
-          applyParsedExam(ex.parsed_exam, ex.title);
+          var parsedObj = typeof ex.parsed_exam === 'string' ? JSON.parse(ex.parsed_exam) : ex.parsed_exam;
+
+          // Explicitly populate S.parsedExam state
+          S.parsedExam = parsedObj;
+
+          if (typeof applyParsedExam === 'function') {
+            applyParsedExam(parsedObj, ex.title || '');
+          }
         }
 
         // Launch the exam UI
