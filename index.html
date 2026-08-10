@@ -5203,7 +5203,7 @@
 
           if (isCompleted) {
             cardHtml += '    <button onclick="showResultsPage(\'' + code + '\')" style="background:#4a4a4a;color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">See Results</button>';
-          } else if (isFreeExam || isUnlocked) {
+          } else if (isFreeExam) {
             cardHtml += '    <button onclick="startExam(\'' + code + '\')" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Start</button>';
           } else {
             cardHtml += '    <button onclick="showUnlock()" style="background:linear-gradient(135deg, #B3004B, #170000);color:#fff;border:none;border-radius:999px;padding:8px 20px;font-weight:700;font-size:14px;cursor:pointer;">Unlock</button>';
