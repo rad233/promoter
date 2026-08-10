@@ -5224,14 +5224,23 @@
       }
 
       function startFreeExam(code) {
+        var ex = S.exams && S.exams[code];
+        if (!ex) return;
+
         S.activeExamCode = code;
         S.currentExamCode = code;
-        // Loads the exam directly into the viewer
-        if (typeof openExam === 'function') {
-          openExam(code);
-        } else if (typeof startExam === 'function') {
-          startExam(code);
+
+        // Set audio & answer key state if available
+        if (ex.audio_url) { S.audioURL = ex.audio_url; window.S_audioURL = ex.audio_url; }
+        if (ex.answer_key) { if (!S.answerKey) S.answerKey = {}; Object.assign(S.answerKey, ex.answer_key); }
+
+        // Build TASKS and parse questions before starting
+        if (ex.parsed_exam) {
+          applyParsedExam(ex.parsed_exam, ex.title);
         }
+
+        // Launch the exam UI
+        startExam();
       }
 
       // FORGOT PASSWORD
