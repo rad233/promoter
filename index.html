@@ -5247,11 +5247,13 @@
         if (ex.answer_key) { if (!S.answerKey) S.answerKey = {}; Object.assign(S.answerKey, ex.answer_key); }
 
         // 3. Parse JSON safely and set S.parsedExam
-        if (ex.parsed_exam) {
-          var parsedObj = typeof ex.parsed_exam === 'string' ? JSON.parse(ex.parsed_exam) : ex.parsed_exam;
+        var rawParsed = ex.parsedExam || ex.parsed_exam;
+        if (rawParsed) {
+          var parsedObj = typeof rawParsed === 'string' ? JSON.parse(rawParsed) : rawParsed;
 
-          // Explicitly populate S.parsedExam state
+          // Explicitly populate S.parsedExam & S.parsedTasks state
           S.parsedExam = parsedObj;
+          S.parsedTasks = parsedObj.tasks || [];
 
           if (typeof applyParsedExam === 'function') {
             applyParsedExam(parsedObj, ex.title || '');
