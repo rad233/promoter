@@ -4960,6 +4960,19 @@
             if (error) { console.error('dbUpsert RPC ERROR', table, error.message); return false; }
             return true;
           }
+          if (table === 'submissions') {
+            var { data, error } = await sb.rpc('submit_student_exam', {
+              p_exam_code: row.exam_code,
+              p_answers: row.answers || {},
+              p_elapsed_str: row.elapsed_str || ''
+            });
+
+            if (error) {
+              console.error('dbUpsert RPC ERROR', table, error.message);
+              return false;
+            }
+            return true;
+          }
           var q = sb.from(table).upsert(row, conflict ? { onConflict: conflict } : {});
           var { data, error } = await q;
           if (error) { console.error('dbUpsert ERROR', table, error.message, error.details, error.hint); return false; }
