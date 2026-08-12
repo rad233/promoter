@@ -5237,6 +5237,11 @@
         var ex = S.exams && S.exams[code];
         if (!ex) return;
 
+        showPage('page-exam');
+        var sPage = document.getElementById('page-student');
+        if (sPage) sPage.style.display = 'none';
+        buildSidebar();
+
         S.activeExamCode = code;
         S.currentExamCode = code;
 
