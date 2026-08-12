@@ -5010,6 +5010,10 @@
       };
 
       function showPage(id) {
+        if (id === 'page-exam') {
+          var sPage = document.getElementById('page-student');
+          if (sPage) sPage.style.display = 'none';
+        }
         var pages = document.querySelectorAll('.page');
         for (var i = 0; i < pages.length; i++) {
           pages[i].classList.remove('active');
