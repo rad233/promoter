@@ -5058,12 +5058,13 @@
           document.body.classList.remove('exam-active');
           disableExamProtection();
         }
-      }
-      if (id === 'page-exam') {
-        var sPage = document.getElementById('page-student');
-        var sView = document.getElementById('view-student-dashboard');
-        if (sPage) sPage.style.display = 'none';
-        if (sView) sView.style.display = 'none';
+
+        if (id === 'page-exam') {
+          var sPage = document.getElementById('page-student');
+          var sView = document.getElementById('view-student-dashboard');
+          if (sPage) sPage.style.display = 'none';
+          if (sView) sView.style.display = 'none';
+        }
       }
 
 
