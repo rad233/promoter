@@ -5010,12 +5010,6 @@
       };
 
       function showPage(id) {
-        if (id === 'page-exam') {
-          var sPage = document.getElementById('page-student');
-          var sView = document.getElementById('view-student-dashboard');
-          if (sPage) sPage.style.display = 'none';
-          if (sView) sView.style.display = 'none';
-        }
         var pages = document.querySelectorAll('.page');
         for (var i = 0; i < pages.length; i++) {
           pages[i].classList.remove('active');
@@ -5065,6 +5059,13 @@
           disableExamProtection();
         }
       }
+      if (id === 'page-exam') {
+        var sPage = document.getElementById('page-student');
+        var sView = document.getElementById('view-student-dashboard');
+        if (sPage) sPage.style.display = 'none';
+        if (sView) sView.style.display = 'none';
+      }
+
 
       function enableExamProtection() {
         document.addEventListener('copy', _blockExamEvent, true);
