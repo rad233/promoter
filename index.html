@@ -5559,7 +5559,10 @@
       }
 
       function startExam(isReEntry) {
-        showPage('page-exam'); buildSidebar();
+        showPage('page-exam');
+        var sPage = document.getElementById('page-student');
+        if (sPage) sPage.style.display = 'none';
+        buildSidebar();
         var _hasIntro = S.parsedExam && S.parsedExam.hasIntro;
         var _activeEx = S.activeExamCode && S.exams[S.activeExamCode];
         var _examDur = _activeEx ? (_activeEx.duration || 150) : 150;
