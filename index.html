@@ -7435,7 +7435,7 @@
           var taskList = (exam.parsedExam && exam.parsedExam.tasks) || exam.tasks || [];
           taskList.forEach(function (t, idx) {
             var tKey = t.key || ('t' + (t.task || (idx + 1)));
-            answerKey[tKey] = t.answer_key || t.answers || t;
+            answerKey[tKey] = t.answer_key || t.answers || t.options || t;
           });
         }
         var taskKeys = Object.keys(answerKey);
