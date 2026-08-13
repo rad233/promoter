@@ -4960,6 +4960,20 @@
             if (error) { console.error('dbUpsert RPC ERROR', table, error.message); return false; }
             return true;
           }
+          if (table === 'grades') {
+            var { data, error } = await sb.rpc('upsert_grade', {
+              p_student_email: row.student_email,
+              p_exam_code: row.exam_code,
+              p_task_key: row.task_key,
+              p_score: row.score,
+              p_max_score: row.max_score || null,
+              p_fluency: row.fluency || null,
+              p_accuracy: row.accuracy || null,
+              p_feedback: row.feedback || 'EMPTY'
+            });
+            if (error) { console.error('dbUpsert RPC ERROR', table, error.message); return false; }
+            return true;
+          }
           if (table === 'submissions') {
             var { data, error } = await sb.rpc('submit_student_exam', {
               p_student_email: row.student_email,
