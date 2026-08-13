@@ -7438,6 +7438,7 @@
             answerKey[tKey] = t.answer_key || t.answers || t.options || t;
           });
         }
+        exam.answerKey = answerKey;
         var taskKeys = Object.keys(answerKey);
 
         if (taskKeys.length === 0) {
