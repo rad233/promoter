@@ -7428,7 +7428,7 @@
         if (titleEl) titleEl.textContent = (exam.title || examCode) + ' - Answer Review';
 
         // Get available tasks from answerKey (e.g. ['t1', 't2', 't3'...])
-        var answerKey = exam.answerKey || {};
+        var answerKey = exam.answerKey || exam.answer_key || (exam.parsed_exam ? exam.parsed_exam.answer_key : null) || {};
         var taskKeys = Object.keys(answerKey);
 
         if (taskKeys.length === 0) {
