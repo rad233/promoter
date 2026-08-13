@@ -7428,7 +7428,16 @@
         if (titleEl) titleEl.textContent = (exam.title || examCode) + ' - Answer Review';
 
         // Get available tasks from answerKey (e.g. ['t1', 't2', 't3'...])
-        var answerKey = exam.answerKey || exam.answer_key || (exam.parsed_exam ? exam.parsed_exam.answer_key : null) || {};
+        var answerKey = exam.answerKey || exam.answer_key || (exam.parsedExam && exam.parsedExam.answer_key) || {};
+
+        // If answerKey is empty, fallback to generated keys from tasks array
+        if (Object.keys(answerKey).length === 0) {
+          var taskList = (exam.parsedExam && exam.parsedExam.tasks) || exam.tasks || [];
+          taskList.forEach(function (t, idx) {
+            var tKey = t.key || ('t' + (t.task || (idx + 1)));
+            answerKey[tKey] = t.answer_key || t.answers || t;
+          });
+        }
         var taskKeys = Object.keys(answerKey);
 
         if (taskKeys.length === 0) {
