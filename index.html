@@ -7538,22 +7538,36 @@
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
+          // 1. Direct lookup from original working code
           var rawTarget = taskKeyObj[qNum];
 
-          // Handle array formats (e.g., multiple accepted answers like ["IN", "AT"] or option lists)
-          if (Array.isArray(rawTarget)) {
-            if (rawTarget.length === 0) {
-              rawTarget = 'N/A';
-            } else if (rawTarget.every(function (item) { return typeof item === 'string' && item.length < 20; })) {
-              // If it's an array of short strings, treat them as multiple acceptable answers (e.g., "IN / AT")
-              rawTarget = rawTarget.join(' / ');
-            } else {
-              // If it's a choices/options array, it's not the answer key
-              rawTarget = 'N/A';
+          // 2. Fallback: Check taskData/parsedExam if answerKey has an empty array or missing key
+          if (rawTarget === undefined || (Array.isArray(rawTarget) && rawTarget.length === 0)) {
+            if (taskData) {
+              if (taskData.answers && taskData.answers[qNum]) {
+                rawTarget = taskData.answers[qNum];
+              } else if (taskData[qNum] && !Array.isArray(taskData[qNum])) {
+                rawTarget = taskData[qNum];
+              }
             }
           }
 
-          // Format target string
+          // 3. Handle array formatting safely
+          if (Array.isArray(rawTarget)) {
+            // Filter out option lists (e.g. "A. Option Text")
+            var isOptionsList = rawTarget.some(function (item) {
+              return typeof item === 'string' && /^[A-H][\.\)]/i.test(item.trim());
+            });
+
+            if (isOptionsList || rawTarget.length === 0) {
+              rawTarget = 'N/A';
+            } else {
+              // Join acceptable answers (e.g. ["where", "which"] -> "WHERE / WHICH")
+              rawTarget = rawTarget.join(' / ');
+            }
+          }
+
+          // 4. Clean target string
           var target = String(rawTarget || '').trim().toUpperCase();
           if (!target || target === 'UNDEFINED') {
             target = 'N/A';
@@ -7561,11 +7575,11 @@
 
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
 
-          // Support multiple accepted answers split by '/'
+          // 5. Check correctness against single or multiple accepted answers
           var isCorrect = false;
           if (givenRaw !== 'NO ANSWER' && target !== 'N/A') {
             var acceptedAnswers = target.split('/').map(function (s) { return s.trim(); });
-            isCorrect = acceptedAnswers.includes(givenRaw);
+            isCorrect = acceptedAnswers.indexOf(givenRaw) !== -1;
           }
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
