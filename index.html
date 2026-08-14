@@ -7496,6 +7496,50 @@
         var taskKeyObj = answerKey[normalizedKey] || answerKey[tKey] || {};
         var studentTaskAns = studentAns[normalizedKey] || studentAns[tKey] || {};
 
+        // Retrieve task data from exam structure
+        var taskIndex = parseInt(normalizedKey.replace('t', ''), 10) - 1;
+        var taskData = (exam && exam.parsedExam && exam.parsedExam.tasks && exam.parsedExam.tasks[taskIndex])
+          ? exam.parsedExam.tasks[taskIndex]
+          : (exam && exam.tasks && exam.tasks[taskIndex] ? exam.tasks[taskIndex] : {});
+
+        // Branch for Task 7 (Essay)
+        if (normalizedKey === 't7' || taskData.type === 'essay') {
+          var container = document.getElementById('vam-questions-list');
+          if (!container) return;
+
+          var promptText = taskData.prompt || 'No prompt specified.';
+          var instructionsText = taskData.instructions || '';
+          var essaySubmission = typeof studentTaskAns === 'string'
+            ? studentTaskAns
+            : (studentTaskAns.essay || studentTaskAns.text || 'No submission found.');
+
+          var essayHtml = '<div style="display:flex; flex-direction:column; gap:16px;">';
+
+          // Prompt Card
+          essayHtml += '  <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:16px;">';
+          essayHtml += '    <strong style="color:#007bff; font-size:1rem; display:block; margin-bottom:8px;">Essay Prompt</strong>';
+          if (instructionsText) {
+            essayHtml += '    <p style="font-size:0.85rem; color:#6c757d; margin-bottom:8px;">' + instructionsText + '</p>';
+          }
+          essayHtml += '    <p style="font-size:0.95rem; color:#212529; line-height:1.5; margin:0;">' + promptText + '</p>';
+          essayHtml += '  </div>';
+
+          // Student Submission Card
+          essayHtml += '  <div style="border:1px solid #dee2e6; border-radius:8px; padding:16px; background:#fff;">';
+          essayHtml += '    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">';
+          essayHtml += '      <strong style="font-size:0.95rem; color:#333;">Student Submission</strong>';
+          essayHtml += '      <span style="background:#e2e3e5; color:#383d41; font-size:0.8rem; padding:4px 8px; border-radius:12px; font-weight:600;">Pending Grading</span>';
+          essayHtml += '    </div>';
+          essayHtml += '    <div style="font-size:0.9rem; color:#495057; white-space:pre-wrap; line-height:1.6; background:#fafafa; padding:12px; border-radius:6px; border:1px dashed #ced4da;">';
+          essayHtml += essaySubmission;
+          essayHtml += '    </div>';
+          essayHtml += '  </div>';
+
+          essayHtml += '</div>';
+          container.innerHTML = essayHtml;
+          return;
+        }
+
         // If answers are stored directly in studentTaskAns (like 1..8)
         var qNums = Object.keys(studentTaskAns).length > 0
           ? Object.keys(studentTaskAns)
