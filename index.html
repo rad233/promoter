@@ -7485,50 +7485,10 @@
           }
         });
 
-        // Normalize tKey (e.g. 'Task 1' -> 't1', '1' -> 't1')
-        var normalizedKey = tKey;
-        if (/^\d+$/.test(tKey)) {
-          normalizedKey = 't' + tKey;
-        } else if (/^task\s*\d+$/i.test(tKey)) {
-          normalizedKey = 't' + tKey.replace(/[^0-9]/g, '');
-        }
-
-        var taskKeyObj = answerKey[normalizedKey] || answerKey[tKey] || {};
-        var studentTaskAns = studentAns[normalizedKey] || studentAns[tKey] || {};
-
-        // Retrieve task data from exam structure
-        var taskIndex = parseInt(normalizedKey.replace('t', ''), 10) - 1;
-        var taskData = (exam && exam.parsedExam && exam.parsedExam.tasks && exam.parsedExam.tasks[taskIndex])
-          ? exam.parsedExam.tasks[taskIndex]
-          : (exam && exam.tasks && exam.tasks[taskIndex] ? exam.tasks[taskIndex] : {});
-
-        var taskType = String(taskKeyObj.type || taskData.type || '').toLowerCase();
-
-        // Branch for Task 7 (Essay)
-        if (normalizedKey === 't7' || taskType === 'essay' || !!taskKeyObj.prompt || !!taskData.prompt) {
-          var container = document.getElementById('vam-questions-list');
-          if (!container) return;
-
-          var promptText = taskKeyObj.prompt || taskKeyObj.text || taskData.prompt || taskData.text || 'Essay Prompt';
-          var essaySubmission = typeof studentTaskAns === 'string'
-            ? studentTaskAns
-            : (studentTaskAns.text || studentTaskAns.essay || 'No essay submitted');
-
-          var essayHtml = '<div style="padding:16px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc;">';
-          essayHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Task Prompt:</strong>';
-          essayHtml += '  <p style="font-size:0.9rem; color:#475569; margin:6px 0 14px 0;">' + promptText + '</p>';
-          essayHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Submitted Essay:</strong>';
-          essayHtml += '  <div style="font-size:0.9rem; color:#0f172a; margin-top:6px; padding:12px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; white-space:pre-wrap; line-height:1.5;">' + essaySubmission + '</div>';
-          essayHtml += '</div>';
-
-          container.innerHTML = essayHtml;
-          return;
-        }
-
-        // If answers are stored directly in studentTaskAns (like 1..8)
-        var qNums = Object.keys(studentTaskAns).length > 0
-          ? Object.keys(studentTaskAns)
-          : Object.keys(taskKeyObj);
+        // Render question comparison list for selected task
+        var taskKeyObj = answerKey[tKey] || {};
+        var studentTaskAns = studentAns[tKey] || {};
+        var qNums = Object.keys(taskKeyObj);
 
         if (qNums.length === 0) {
           document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
@@ -7538,49 +7498,9 @@
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
-          // 1. Direct lookup from original working code
-          var rawTarget = taskKeyObj[qNum];
-
-          // 2. Fallback: Check taskData/parsedExam if answerKey has an empty array or missing key
-          if (rawTarget === undefined || (Array.isArray(rawTarget) && rawTarget.length === 0)) {
-            if (taskData) {
-              if (taskData.answers && taskData.answers[qNum]) {
-                rawTarget = taskData.answers[qNum];
-              } else if (taskData[qNum] && !Array.isArray(taskData[qNum])) {
-                rawTarget = taskData[qNum];
-              }
-            }
-          }
-
-          // 3. Handle array formatting safely
-          if (Array.isArray(rawTarget)) {
-            // Filter out option lists (e.g. "A. Option Text")
-            var isOptionsList = rawTarget.some(function (item) {
-              return typeof item === 'string' && /^[A-H][\.\)]/i.test(item.trim());
-            });
-
-            if (isOptionsList || rawTarget.length === 0) {
-              rawTarget = 'N/A';
-            } else {
-              // Join acceptable answers (e.g. ["where", "which"] -> "WHERE / WHICH")
-              rawTarget = rawTarget.join(' / ');
-            }
-          }
-
-          // 4. Clean target string
-          var target = String(rawTarget || '').trim().toUpperCase();
-          if (!target || target === 'UNDEFINED') {
-            target = 'N/A';
-          }
-
+          var target = String(taskKeyObj[qNum] || '').trim().toUpperCase();
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-
-          // 5. Check correctness against single or multiple accepted answers
-          var isCorrect = false;
-          if (givenRaw !== 'NO ANSWER' && target !== 'N/A') {
-            var acceptedAnswers = target.split('/').map(function (s) { return s.trim(); });
-            isCorrect = acceptedAnswers.indexOf(givenRaw) !== -1;
-          }
+          var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
           listHtml += '  <div>';
