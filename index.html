@@ -7485,10 +7485,21 @@
           }
         });
 
-        // Render question comparison list for selected task
-        var taskKeyObj = answerKey[tKey] || {};
-        var studentTaskAns = studentAns[tKey] || {};
-        var qNums = Object.keys(taskKeyObj);
+        // Normalize tKey (e.g. 'Task 1' -> 't1', '1' -> 't1')
+        var normalizedKey = tKey;
+        if (/^\d+$/.test(tKey)) {
+          normalizedKey = 't' + tKey;
+        } else if (/^task\s*\d+$/i.test(tKey)) {
+          normalizedKey = 't' + tKey.replace(/[^0-9]/g, '');
+        }
+
+        var taskKeyObj = answerKey[normalizedKey] || answerKey[tKey] || {};
+        var studentTaskAns = studentAns[normalizedKey] || studentAns[tKey] || {};
+
+        // If answers are stored directly in studentTaskAns (like 1..8)
+        var qNums = Object.keys(studentTaskAns).length > 0
+          ? Object.keys(studentTaskAns)
+          : Object.keys(taskKeyObj);
 
         if (qNums.length === 0) {
           document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
@@ -7498,9 +7509,25 @@
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
-          var target = String(taskKeyObj[qNum] || '').trim().toUpperCase();
+          var rawTarget = taskKeyObj[qNum];
+
+          // If rawTarget is an array (like in t1 options or t2 empty arrays []), handle gracefully
+          if (Array.isArray(rawTarget)) {
+            // If array is empty (like Task 2), there is no answer key available
+            if (rawTarget.length === 0) {
+              rawTarget = 'N/A';
+            } else {
+              // If it's an options array, rawTarget is choices, not the correct answer key
+              rawTarget = 'N/A';
+            }
+          }
+
+          var target = String(rawTarget || '').trim().toUpperCase();
+          if (!target || target === 'UNDEFINED') {
+            target = 'N/A';
+          }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-          var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+          var isCorrect = givenRaw !== 'NO ANSWER' && target !== 'N/A' && givenRaw === target;
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
           listHtml += '  <div>';
