@@ -7540,23 +7540,33 @@
         qNums.forEach(function (qNum) {
           var rawTarget = taskKeyObj[qNum];
 
-          // If rawTarget is an array (like in t1 options or t2 empty arrays []), handle gracefully
+          // Handle array formats (e.g., multiple accepted answers like ["IN", "AT"] or option lists)
           if (Array.isArray(rawTarget)) {
-            // If array is empty (like Task 2), there is no answer key available
             if (rawTarget.length === 0) {
               rawTarget = 'N/A';
+            } else if (rawTarget.every(function (item) { return typeof item === 'string' && item.length < 20; })) {
+              // If it's an array of short strings, treat them as multiple acceptable answers (e.g., "IN / AT")
+              rawTarget = rawTarget.join(' / ');
             } else {
-              // If it's an options array, rawTarget is choices, not the correct answer key
+              // If it's a choices/options array, it's not the answer key
               rawTarget = 'N/A';
             }
           }
 
+          // Format target string
           var target = String(rawTarget || '').trim().toUpperCase();
           if (!target || target === 'UNDEFINED') {
             target = 'N/A';
           }
+
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-          var isCorrect = givenRaw !== 'NO ANSWER' && target !== 'N/A' && givenRaw === target;
+
+          // Support multiple accepted answers split by '/'
+          var isCorrect = false;
+          if (givenRaw !== 'NO ANSWER' && target !== 'N/A') {
+            var acceptedAnswers = target.split('/').map(function (s) { return s.trim(); });
+            isCorrect = acceptedAnswers.includes(givenRaw);
+          }
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
           listHtml += '  <div>';
