@@ -7485,39 +7485,83 @@
           }
         });
 
-        // Render question comparison list for selected task
-        var taskKeyObj = answerKey[tKey] || {};
+        var taskObj = answerKey[tKey] || {};
         var studentTaskAns = studentAns[tKey] || {};
-        var qNums = Object.keys(taskKeyObj);
-
-        if (qNums.length === 0) {
-          document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
-          return;
-        }
+        var taskType = String(taskObj.type || '').toLowerCase();
 
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
-        qNums.forEach(function (qNum) {
-          var target = String(taskKeyObj[qNum] || '').trim().toUpperCase();
-          var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-          var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+        // --- 1. ESSAY / WRITING TASK ---
+        if (taskType === 'essay' || taskObj.prompt) {
+          var promptText = taskObj.prompt || taskObj.text || 'Essay Prompt';
+          var essaySubmission = typeof studentTaskAns === 'string' ? studentTaskAns : (studentTaskAns.text || studentTaskAns.essay || 'No essay submitted');
 
-          listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
-          listHtml += '  <div>';
-          listHtml += '    <strong style="font-size:0.95rem; color:#333;">Question ' + qNum + '</strong>';
-          listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
+          listHtml += '<div style="padding:16px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc;">';
+          listHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Task Prompt:</strong>';
+          listHtml += '  <p style="font-size:0.9rem; color:#475569; margin:6px 0 14px 0;">' + promptText + '</p>';
+          listHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Submitted Essay:</strong>';
+          listHtml += '  <div style="font-size:0.9rem; color:#0f172a; margin-top:6px; padding:12px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; white-space:pre-wrap;">' + essaySubmission + '</div>';
+          listHtml += '</div>';
 
-          if (isCorrect) {
-            listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
+        } else {
+          // Extract actual target answer pairs depending on task data structure
+          var targets = {};
+
+          if (taskObj.answer_key && typeof taskObj.answer_key === 'object') {
+            targets = taskObj.answer_key;
+          } else if (taskObj.answers && typeof taskObj.answers === 'object') {
+            targets = taskObj.answers;
+          } else if (Array.isArray(taskObj.questions)) {
+            taskObj.questions.forEach(function (q, i) {
+              var qNum = q.question || q.id || (i + 1);
+              targets[qNum] = q.answer || q.correct || q.answer_key || '';
+            });
           } else {
-            listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
+            // Clean target map by filtering out structural keys (task, type, points, options, text, etc.)
+            var reservedKeys = ['task', 'type', 'points', 'text', 'options', 'choices', 'word_bank', 'instructions', 'question_count', 'passages', 'dialogue'];
+            Object.keys(taskObj).forEach(function (k) {
+              if (!reservedKeys.includes(k.toLowerCase())) {
+                targets[k] = taskObj[k];
+              }
+            });
           }
 
-          listHtml += '    </div>';
-          listHtml += '  </div>';
-          listHtml += '  <div style="font-size:1.2rem;">' + (isCorrect ? '✔️' : '❌') + '</div>';
-          listHtml += '</div>';
-        });
+          var qNums = Object.keys(targets);
+
+          if (qNums.length === 0) {
+            document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No valid questions found for this task.</p>';
+            return;
+          }
+
+          qNums.forEach(function (qNum, index) {
+            var rawTarget = targets[qNum];
+            var target = String(typeof rawTarget === 'object' ? JSON.stringify(rawTarget) : rawTarget).trim().toUpperCase();
+
+            var rawGiven = studentTaskAns[qNum] !== undefined ? studentTaskAns[qNum] : studentTaskAns['q' + qNum];
+            var givenRaw = (rawGiven !== undefined && rawGiven !== '') ? String(rawGiven).trim().toUpperCase() : 'NO ANSWER';
+
+            var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+
+            // Ensure question display number is clean (1, 2, 3...)
+            var displayNum = (qNum.length <= 3 && !isNaN(qNum)) ? qNum : (index + 1);
+
+            listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
+            listHtml += '  <div>';
+            listHtml += '    <strong style="font-size:0.95rem; color:#333;">Question ' + displayNum + '</strong>';
+            listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
+
+            if (isCorrect) {
+              listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
+            } else {
+              listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
+            }
+
+            listHtml += '    </div>';
+            listHtml += '  </div>';
+            listHtml += '  <div style="font-size:1.2rem;">' + (isCorrect ? '✔️' : '❌') + '</div>';
+            listHtml += '</div>';
+          });
+        }
 
         listHtml += '</div>';
         document.getElementById('vam-questions-list').innerHTML = listHtml;
