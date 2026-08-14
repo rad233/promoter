@@ -7504,9 +7504,9 @@
           listHtml += '</div>';
 
         } else {
-          // Extract actual target answer pairs depending on task data structure
           var targets = {};
 
+          // Handle different structural formats across tasks
           if (taskObj.answer_key && typeof taskObj.answer_key === 'object') {
             targets = taskObj.answer_key;
           } else if (taskObj.answers && typeof taskObj.answers === 'object') {
@@ -7517,10 +7517,10 @@
               targets[qNum] = q.answer || q.correct || q.answer_key || '';
             });
           } else {
-            // Clean target map by filtering out structural keys (task, type, points, options, text, etc.)
-            var reservedKeys = ['task', 'type', 'points', 'text', 'options', 'choices', 'word_bank', 'instructions', 'question_count', 'passages', 'dialogue'];
+            // Filter out structural/metadata fields, and ignore arrays like options/choices/passages
+            var reservedKeys = ['task', 'type', 'points', 'text', 'options', 'choices', 'word_bank', 'instructions', 'question_count', 'passages', 'dialogue', 'answer_key', 'answers'];
             Object.keys(taskObj).forEach(function (k) {
-              if (!reservedKeys.includes(k.toLowerCase())) {
+              if (!reservedKeys.includes(k.toLowerCase()) && !Array.isArray(taskObj[k])) {
                 targets[k] = taskObj[k];
               }
             });
@@ -7529,38 +7529,39 @@
           var qNums = Object.keys(targets);
 
           if (qNums.length === 0) {
-            document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No valid questions found for this task.</p>';
-            return;
+            listHtml += '<div style="padding:16px; text-align:center; color:#666;">No individual questions found for this task layout.</div>';
+          } else {
+            qNums.forEach(function (qNum, index) {
+              var rawTarget = targets[qNum];
+              // If target is an array or object, grab the first element or stringify cleanly
+              if (Array.isArray(rawTarget)) {
+                rawTarget = rawTarget[0] || '';
+              }
+              var target = String(rawTarget).trim().toUpperCase();
+
+              var rawGiven = studentTaskAns[qNum] !== undefined ? studentTaskAns[qNum] : studentTaskAns['q' + qNum];
+              var givenRaw = (rawGiven !== undefined && rawGiven !== '') ? String(rawGiven).trim().toUpperCase() : 'NO ANSWER';
+
+              var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+              var displayNum = (qNum.length <= 3 && !isNaN(qNum)) ? qNum : (index + 1);
+
+              listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
+              listHtml += '  <div>';
+              listHtml += '    <strong style="font-size:0.95rem; color:#333;">Question ' + displayNum + '</strong>';
+              listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
+
+              if (isCorrect) {
+                listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
+              } else {
+                listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
+              }
+
+              listHtml += '    </div>';
+              listHtml += '  </div>';
+              listHtml += '  <div style="font-size:1.2rem;">' + (isCorrect ? '✔️' : '❌') + '</div>';
+              listHtml += '</div>';
+            });
           }
-
-          qNums.forEach(function (qNum, index) {
-            var rawTarget = targets[qNum];
-            var target = String(typeof rawTarget === 'object' ? JSON.stringify(rawTarget) : rawTarget).trim().toUpperCase();
-
-            var rawGiven = studentTaskAns[qNum] !== undefined ? studentTaskAns[qNum] : studentTaskAns['q' + qNum];
-            var givenRaw = (rawGiven !== undefined && rawGiven !== '') ? String(rawGiven).trim().toUpperCase() : 'NO ANSWER';
-
-            var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
-
-            // Ensure question display number is clean (1, 2, 3...)
-            var displayNum = (qNum.length <= 3 && !isNaN(qNum)) ? qNum : (index + 1);
-
-            listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
-            listHtml += '  <div>';
-            listHtml += '    <strong style="font-size:0.95rem; color:#333;">Question ' + displayNum + '</strong>';
-            listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
-
-            if (isCorrect) {
-              listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
-            } else {
-              listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
-            }
-
-            listHtml += '    </div>';
-            listHtml += '  </div>';
-            listHtml += '  <div style="font-size:1.2rem;">' + (isCorrect ? '✔️' : '❌') + '</div>';
-            listHtml += '</div>';
-          });
         }
 
         listHtml += '</div>';
