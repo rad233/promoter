@@ -7562,7 +7562,7 @@
             var target = String(rootAns || rawAns || '').trim().toUpperCase();
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-          var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
+          var isCorrect = givenRaw !== 'NO ANSWER' && (givenRaw === correctLetter || givenRaw === target);
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
           listHtml += '  <div>';
