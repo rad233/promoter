@@ -7555,7 +7555,8 @@
           var correctLetter = String(rootAns || '').trim().toUpperCase();
           if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0) {
             var matched = rawAns.find(function (opt) {
-              return String(opt).trim().toUpperCase().startsWith(correctLetter + '.');
+              var optStr = String(opt).trim().toUpperCase();
+              return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
             });
             var target = matched ? matched.trim() : correctLetter;
           } else {
@@ -7565,7 +7566,8 @@
           var givenDisplay = givenRaw;
           if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0 && givenRaw !== 'NO ANSWER') {
             var userMatched = rawAns.find(function (opt) {
-              return String(opt).trim().toUpperCase().startsWith(givenRaw + '.');
+              var optStr = String(opt).trim().toUpperCase();
+              return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
             });
             if (userMatched) {
               givenDisplay = userMatched.trim();
