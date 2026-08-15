@@ -7503,12 +7503,14 @@
 
         var taskType = String(taskKeyObj.type || taskData.type || '').toLowerCase();
 
-        if (qNums.length === 0) {
-          var count = (taskData && taskData.question_count) || 8;
-          for (var i = 1; i <= count; i++) {
-            qNums.push(String(i));
+        var expectedCount = (taskData && taskData.question_count) || 8;
+        for (var i = 1; i <= expectedCount; i++) {
+          var qStr = String(i);
+          if (!qNums.includes(qStr)) {
+            qNums.push(qStr);
           }
         }
+        qNums.sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
 
 
         // Branch for Task 7 (Essay)
