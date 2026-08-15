@@ -7519,64 +7519,17 @@
           return;
         }
 
-        // 1. Filter out metadata keys so they aren't treated as question numbers
-        var reservedKeys = ['task', 'type', 'points', 'text', 'options', 'choices', 'word_bank', 'instructions', 'question_count', 'passages', 'dialogue', 'prompt'];
-        var rawKeys = Object.keys(studentTaskAns).concat(Object.keys(taskKeyObj));
-        var qNums = [];
-
-        rawKeys.forEach(function (k) {
-          if (!reservedKeys.includes(k.toLowerCase()) && !qNums.includes(k)) {
-            qNums.push(k);
-          }
-        });
-
-        // 2. If no direct numerical keys exist, fallback to question_count (1..N)
         if (qNums.length === 0) {
-          var totalQuestions = taskData.question_count || taskKeyObj.question_count || 0;
-          if (totalQuestions > 0) {
-            for (var i = 1; i <= totalQuestions; i++) {
-              qNums.push(String(i));
-            }
-          }
-        }
-
-        if (qNums.length === 0) {
-          document.getElementById('vam-questions-list').innerHTML = '<div style="padding:16px; text-align:center; color:#666;">No questions found for this task layout.</div>';
+          document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
           return;
         }
 
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
-          var rawTarget = taskKeyObj[qNum];
-
-          // Fallback for Task 2 / Flat answer_key format ("t2_q1", "t4_q1")
-          if (rawTarget === undefined || rawTarget === '' || (Array.isArray(rawTarget) && rawTarget.length === 0)) {
-            var taskNumStr = String(tKey).replace(/[^0-9]/g, '');
-            var flatKey = 't' + taskNumStr + '_q' + qNum;
-            if (answerKey[flatKey] !== undefined) {
-              rawTarget = answerKey[flatKey];
-            }
-          }
-
-          // Clean choices array or full strings
-          if (Array.isArray(rawTarget)) {
-            var isOptionsList = rawTarget.some(function (item) {
-              return typeof item === 'string' && /^[A-H][\.\)]/i.test(item.trim());
-            });
-            if (isOptionsList || rawTarget.length === 0) {
-              rawTarget = 'N/A';
-            } else {
-              rawTarget = rawTarget.join(' / ');
-            }
-          } else if (typeof rawTarget === 'string' && /^[A-H][\.\)]\s/i.test(rawTarget.trim())) {
-            rawTarget = rawTarget.trim().charAt(0);
-          }
-
-          var target = String(rawTarget || '').trim().toUpperCase();
-          if (!target || target === 'UNDEFINED') {
-            target = 'N/A';
-          }
+          var flatKey = 't' + String(tKey).replace(/[^0-9]/g, '') + '_q' + qNum;
+          var rawAns = taskKeyObj[qNum] || (exam && exam.answer_key ? exam.answer_key[flatKey] : '');
+          var target = String(rawAns || '').trim().toUpperCase();
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
 
