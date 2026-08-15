@@ -7490,6 +7490,35 @@
         var studentTaskAns = studentAns[tKey] || {};
         var qNums = Object.keys(taskKeyObj);
 
+        // Retrieve task data from exam structure
+        var taskIndex = parseInt(String(tKey).replace(/[^0-9]/g, ''), 10) - 1;
+        var taskData = (exam && exam.parsedExam && exam.parsedExam.tasks && exam.parsedExam.tasks[taskIndex])
+          ? exam.parsedExam.tasks[taskIndex]
+          : (exam && exam.tasks && exam.tasks[taskIndex] ? exam.tasks[taskIndex] : {});
+
+        var taskType = String(taskKeyObj.type || taskData.type || '').toLowerCase();
+
+        // Branch for Task 7 (Essay)
+        if (tKey === 't7' || tKey === '7' || taskType === 'essay' || !!taskKeyObj.prompt || !!taskData.prompt) {
+          var container = document.getElementById('vam-questions-list');
+          if (!container) return;
+
+          var promptText = taskKeyObj.prompt || taskKeyObj.text || taskData.prompt || taskData.text || 'Essay Prompt';
+          var essaySubmission = typeof studentTaskAns === 'string'
+            ? studentTaskAns
+            : (studentTaskAns.text || studentTaskAns.essay || 'No essay submitted');
+
+          var essayHtml = '<div style="padding:16px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc;">';
+          essayHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Task Prompt:</strong>';
+          essayHtml += '  <p style="font-size:0.9rem; color:#475569; margin:6px 0 14px 0;">' + promptText + '</p>';
+          essayHtml += '  <strong style="font-size:0.95rem; color:#1e293b;">Submitted Essay:</strong>';
+          essayHtml += '  <div style="font-size:0.9rem; color:#0f172a; margin-top:6px; padding:12px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; white-space:pre-wrap; line-height:1.5;">' + essaySubmission + '</div>';
+          essayHtml += '</div>';
+
+          container.innerHTML = essayHtml;
+          return;
+        }
+
         if (qNums.length === 0) {
           document.getElementById('vam-questions-list').innerHTML = '<p style="color:#666;">No questions found for this task.</p>';
           return;
