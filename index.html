@@ -7562,6 +7562,15 @@
             var target = String(rootAns || rawAns || '').trim().toUpperCase();
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
+          var givenDisplay = givenRaw;
+          if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0 && givenRaw !== 'NO ANSWER') {
+            var userMatched = rawAns.find(function (opt) {
+              return String(opt).trim().toUpperCase().startsWith(givenRaw + '.');
+            });
+            if (userMatched) {
+              givenDisplay = userMatched.trim();
+            }
+          }
           var isCorrect = givenRaw !== 'NO ANSWER' && (givenRaw === correctLetter || givenRaw === target);
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
@@ -7570,9 +7579,9 @@
           listHtml += '    <div style="font-size:0.88rem; margin-top:4px;">';
 
           if (isCorrect) {
-            listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenRaw + '</span>';
+            listHtml += '      Your Answer: <span style="color:#2e7d32; font-weight:700;">' + givenDisplay + '</span>';
           } else {
-            listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenRaw + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
+            listHtml += '      Your Answer: <span style="color:#c62828; font-weight:700;">' + givenDisplay + '</span> | Correct: <span style="color:#2e7d32; font-weight:700;">' + target + '</span>';
           }
 
           listHtml += '    </div>';
