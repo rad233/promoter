@@ -7490,6 +7490,18 @@
         var studentTaskAns = studentAns[tKey] || {};
         var qNums = Object.keys(taskKeyObj);
 
+        // Fix for Task 2: filter out 0/metadata, or manually generate 1..N
+        qNums = qNums.filter(function (q) {
+          return q !== '0' && q !== 'options' && q !== 'type' && q !== 'text';
+        });
+
+        if (qNums.length === 0) {
+          // If Task 2 has no numerical keys in taskKeyObj, build keys 1..8
+          for (var i = 1; i <= 8; i++) {
+            qNums.push(String(i));
+          }
+        }
+
         // Retrieve task data from exam structure
         var taskIndex = parseInt(String(tKey).replace(/[^0-9]/g, ''), 10) - 1;
         var taskData = (exam && exam.parsedExam && exam.parsedExam.tasks && exam.parsedExam.tasks[taskIndex])
@@ -7527,8 +7539,17 @@
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
+          // Pull from taskKeyObj[qNum] OR flat exam.answer_key["t2_q1"]
           var flatKey = 't' + String(tKey).replace(/[^0-9]/g, '') + '_q' + qNum;
-          var rawAns = taskKeyObj[qNum] || (exam && exam.answer_key ? exam.answer_key[flatKey] : '');
+          var rootAns = (exam && exam.answer_key) ? exam.answer_key[flatKey] : '';
+
+          var rawAns = taskKeyObj[qNum] || rootAns;
+
+          // If rawAns is an array (like Task 2 options []), treat it as empty so it defaults to rootAns
+          if (Array.isArray(rawAns) && rawAns.length === 0) {
+            rawAns = rootAns;
+          }
+
           var target = String(rawAns || '').trim().toUpperCase();
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
