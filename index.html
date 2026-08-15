@@ -7551,7 +7551,10 @@
             (S && S.answerKey && S.answerKey[flatKey]) ||
             '';
 
-          var rawAns = taskKeyObj[qNum];
+          var rawAns = taskKeyObj[qNum] ||
+            (taskData && taskData.options && taskData.options[qNum]) ||
+            (taskData && taskData.options && taskData.options[qNum - 1]) ||
+            (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
           if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0) {
             var matched = rawAns.find(function (opt) {
