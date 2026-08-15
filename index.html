@@ -7553,13 +7553,13 @@
 
           var rawAns = taskKeyObj[qNum];
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          if (Array.isArray(rawAns) && rawAns.length > 0) {
+          if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0) {
             var matched = rawAns.find(function (opt) {
               return String(opt).trim().toUpperCase().startsWith(correctLetter + '.');
             });
             var target = matched ? matched.trim() : correctLetter;
           } else {
-            var target = String(rawAns || rootAns || '').trim().toUpperCase();
+            var target = String(rootAns || rawAns || '').trim().toUpperCase();
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
