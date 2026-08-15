@@ -7539,14 +7539,17 @@
         var listHtml = '<div style="display:flex; flex-direction:column; gap:10px;">';
 
         qNums.forEach(function (qNum) {
-          // Pull from taskKeyObj[qNum] OR flat exam.answer_key["t2_q1"]
           var flatKey = 't' + String(tKey).replace(/[^0-9]/g, '') + '_q' + qNum;
-          var rootAns = (exam && exam.answer_key) ? exam.answer_key[flatKey] : '';
 
-          var rawAns = taskKeyObj[qNum] || rootAns;
+          // Search all possible locations for the flat key
+          var rootAns = answerKey[flatKey] ||
+            (exam && exam.answer_key && exam.answer_key[flatKey]) ||
+            (exam && exam.answerKey && exam.answerKey[flatKey]) ||
+            (S && S.answerKey && S.answerKey[flatKey]) ||
+            '';
 
-          // If rawAns is an array (like Task 2 options []), treat it as empty so it defaults to rootAns
-          if (Array.isArray(rawAns) && rawAns.length === 0) {
+          var rawAns = taskKeyObj[qNum];
+          if (!rawAns || (Array.isArray(rawAns) && rawAns.length === 0)) {
             rawAns = rootAns;
           }
 
