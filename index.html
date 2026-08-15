@@ -7529,32 +7529,12 @@
         qNums.forEach(function (qNum) {
           var rawTarget = taskKeyObj[qNum];
 
-          // Fallback for Task 2 / Flat answer_key format (e.g. "t2_q1", "t4_q1")
+          // Fallback for Task 2: if taskKeyObj is empty or holds [], pull from root answerKey ("t2_q1")
           if (rawTarget === undefined || rawTarget === '' || (Array.isArray(rawTarget) && rawTarget.length === 0)) {
-            var taskNumStr = String(tKey).replace(/[^0-9]/g, '');
-            var flatKey = 't' + taskNumStr + '_q' + qNum;
+            var flatKey = tKey + '_q' + qNum; // e.g. "t2_q1"
             if (answerKey[flatKey] !== undefined) {
               rawTarget = answerKey[flatKey];
             }
-          }
-
-          // Clean option lists if rawTarget is an array or full option string
-          if (Array.isArray(rawTarget)) {
-            var isOptionsList = rawTarget.some(function (item) {
-              return typeof item === 'string' && /^[A-H][\.\)]/i.test(item.trim());
-            });
-            if (isOptionsList || rawTarget.length === 0) {
-              rawTarget = 'N/A';
-            } else {
-              rawTarget = rawTarget.join(' / ');
-            }
-          } else if (typeof rawTarget === 'string' && /^[A-H][\.\)]\s/i.test(rawTarget.trim())) {
-            rawTarget = rawTarget.trim().charAt(0);
-          }
-
-          var target = String(rawTarget || '').trim().toUpperCase();
-          if (!target || target === 'UNDEFINED') {
-            target = 'N/A';
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var isCorrect = givenRaw !== 'NO ANSWER' && givenRaw === target;
