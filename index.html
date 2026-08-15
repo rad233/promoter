@@ -7495,13 +7495,6 @@
           return q !== '0' && q !== 'options' && q !== 'type' && q !== 'text';
         });
 
-        if (qNums.length === 0) {
-          // If Task 2 has no numerical keys in taskKeyObj, build keys 1..8
-          for (var i = 1; i <= 8; i++) {
-            qNums.push(String(i));
-          }
-        }
-
         // Retrieve task data from exam structure
         var taskIndex = parseInt(String(tKey).replace(/[^0-9]/g, ''), 10) - 1;
         var taskData = (exam && exam.parsedExam && exam.parsedExam.tasks && exam.parsedExam.tasks[taskIndex])
@@ -7509,6 +7502,14 @@
           : (exam && exam.tasks && exam.tasks[taskIndex] ? exam.tasks[taskIndex] : {});
 
         var taskType = String(taskKeyObj.type || taskData.type || '').toLowerCase();
+
+        if (qNums.length === 0) {
+          var count = (taskData && taskData.question_count) || 8;
+          for (var i = 1; i <= count; i++) {
+            qNums.push(String(i));
+          }
+        }
+
 
         // Branch for Task 7 (Essay)
         if (tKey === 't7' || tKey === '7' || taskType === 'essay' || !!taskKeyObj.prompt || !!taskData.prompt) {
