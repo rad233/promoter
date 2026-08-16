@@ -7558,47 +7558,79 @@
             (taskData && taskData.options && taskData.options[qNum - 1]) ||
             (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          // --- TARGET / CORRECT ANSWER FORMATTING ---
-          var matched = null;
-          var target;
+          var keyStr = String(tKey);
 
-          if (['t1', 't3', 't4', 't5', '4', '5'].includes(String(tKey))) {
+          // Special wrapper for Task 4 (word_bank Object) and Task 5 (nested choices Array)
+          if (keyStr === 't4' || keyStr === '4' || keyStr === 't5' || keyStr === '5') {
+            // 1. Resolve Target (Correct Answer)
+            if (keyStr === 't4' || keyStr === '4') {
+              var wb = (taskData && taskData.word_bank) || rawAns;
+              if (wb && typeof wb === 'object' && wb[correctLetter]) {
+                target = correctLetter + '. ' + String(wb[correctLetter]).trim();
+              } else {
+                target = correctLetter;
+              }
+            } else { // Task 5
+              var task5Options = (taskData && taskData.choices && taskData.choices[qNum - 1]) || rawAns;
+              if (Array.isArray(task5Options)) {
+                var matchedOpt = task5Options.find(function (opt) {
+                  var optStr = String(opt).trim().toUpperCase();
+                  return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
+                });
+                target = matchedOpt ? matchedOpt.trim() : correctLetter;
+              } else {
+                target = correctLetter;
+              }
+            }
+
+            // 2. Resolve Given Display (Student Answer)
+            var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
+            var givenDisplay = givenRaw;
+
+            if (givenRaw !== 'NO ANSWER') {
+              if (keyStr === 't4' || keyStr === '4') {
+                var wbGiven = (taskData && taskData.word_bank) || rawAns;
+                if (wbGiven && typeof wbGiven === 'object' && wbGiven[givenRaw]) {
+                  givenDisplay = givenRaw + '. ' + String(wbGiven[givenRaw]).trim();
+                }
+              } else { // Task 5
+                var task5OptsGiven = (taskData && taskData.choices && taskData.choices[qNum - 1]) || rawAns;
+                if (Array.isArray(task5OptsGiven)) {
+                  var matchedGiven = task5OptsGiven.find(function (opt) {
+                    var optStr = String(opt).trim().toUpperCase();
+                    return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
+                  });
+                  if (matchedGiven) givenDisplay = matchedGiven.trim();
+                }
+              }
+            }
+          } else if (['t1', 't3', '1', '3'].includes(keyStr)) {
+            // Standard Array matching for Tasks 1 & 3
             if (Array.isArray(rawAns) && rawAns.length > 0) {
-              matched = rawAns.find(function (opt) {
+              var matched13 = rawAns.find(function (opt) {
                 var optStr = String(opt).trim().toUpperCase();
                 return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
               });
-            }
-
-            if (matched) {
-              target = matched.trim();
-            } else if (rawAns && typeof rawAns === 'object' && rawAns[correctLetter]) {
-              target = correctLetter + '. ' + String(rawAns[correctLetter]).trim();
+              target = matched13 ? matched13.trim() : correctLetter;
             } else {
               target = correctLetter;
             }
-          } else {
-            target = String(rootAns || rawAns || '').trim().toUpperCase();
-          }
 
-          // --- STUDENT ANSWER FORMATTING ---
-          var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
-          var givenDisplay = givenRaw;
+            var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
+            var givenDisplay = givenRaw;
 
-          if (['t1', 't3', 't4', 't5', '4', '5'].includes(String(tKey)) && givenRaw !== 'NO ANSWER') {
-            var userMatched = null;
-            if (Array.isArray(rawAns) && rawAns.length > 0) {
-              userMatched = rawAns.find(function (opt) {
+            if (givenRaw !== 'NO ANSWER' && Array.isArray(rawAns)) {
+              var userMatched13 = rawAns.find(function (opt) {
                 var optStr = String(opt).trim().toUpperCase();
                 return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
               });
+              if (userMatched13) givenDisplay = userMatched13.trim();
             }
-
-            if (userMatched) {
-              givenDisplay = userMatched.trim();
-            } else if (rawAns && typeof rawAns === 'object' && rawAns[givenRaw]) {
-              givenDisplay = givenRaw + '. ' + String(rawAns[givenRaw]).trim();
-            }
+          } else {
+            // Default Fallback
+            target = String(rootAns || rawAns || '').trim().toUpperCase();
+            var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
+            var givenDisplay = givenRaw;
           }
           var isCorrect = givenRaw !== 'NO ANSWER' && (givenRaw === correctLetter || givenRaw === target);
 
