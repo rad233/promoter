@@ -7492,7 +7492,9 @@
 
         // Fix for Task 2: filter out 0/metadata, or manually generate 1..N
         qNums = qNums.filter(function (q) {
-          return q !== '0' && q !== 'options' && q !== 'type' && q !== 'text';
+          return q !== '0' && q !== 'options' && q !== 'type' && q !== 'text' &&
+            q !== 'task' && q !== 'points' && q !== 'word_bank' &&
+            q !== 'instructions' && q !== 'question_count' && q !== 'choices' && q !== 'prompt';
         });
 
         // Retrieve task data from exam structure
@@ -7556,7 +7558,7 @@
             (taskData && taskData.options && taskData.options[qNum - 1]) ||
             (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0) {
+          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5') && Array.isArray(rawAns) && rawAns.length > 0) {
             var matched = rawAns.find(function (opt) {
               var optStr = String(opt).trim().toUpperCase();
               return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
@@ -7567,7 +7569,7 @@
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var givenDisplay = givenRaw;
-          if ((tKey === 't1' || tKey === 't3') && Array.isArray(rawAns) && rawAns.length > 0 && givenRaw !== 'NO ANSWER') {
+          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5') && Array.isArray(rawAns) && rawAns.length > 0 && givenRaw !== 'NO ANSWER') {
             var userMatched = rawAns.find(function (opt) {
               var optStr = String(opt).trim().toUpperCase();
               return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
