@@ -7558,7 +7558,7 @@
             (taskData && taskData.options && taskData.options[qNum - 1]) ||
             (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          // Target / Correct Answer formatting
+          // --- TARGET / CORRECT ANSWER FORMATTING ---
           var matched = null;
           var target;
 
@@ -7581,7 +7581,7 @@
             target = String(rootAns || rawAns || '').trim().toUpperCase();
           }
 
-          // Student Answer formatting
+          // --- STUDENT ANSWER FORMATTING ---
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var givenDisplay = givenRaw;
 
