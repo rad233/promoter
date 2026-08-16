@@ -7562,37 +7562,26 @@
             (taskData && taskData.options && taskData.options[qNum - 1]) ||
             (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5' || tKey === '4' || tKey === '5'))
-            var matched = null;
-          var target;
-          if (Array.isArray(rawAns) && rawAns.length > 0) {
-            matched = rawAns.find(function (opt) {
+          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5' || tKey === '4' || tKey === '5') && Array.isArray(rawAns) && rawAns.length > 0) {
+            var matched = rawAns.find(function (opt) {
               var optStr = String(opt).trim().toUpperCase();
               return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
             });
-          }
-          if (matched) {
-            target = matched.trim();
-          } else if (rawAns && typeof rawAns === 'object' && rawAns[correctLetter]) {
-            target = correctLetter + '. ' + String(rawAns[correctLetter]).trim();
+            var target = matched ? matched.trim() : correctLetter;
           } else {
-            var fallbackAns = (typeof rootAns !== 'undefined' ? rootAns : (typeof rawAns !== 'undefined' ? rawAns : ''))
-            target = String(fallbackAns).trim().toUpperCase();
+            var target = String(rootAns || rawAns || '').trim().toUpperCase();
           }
           var givenRaw = studentTaskAns[qNum] !== undefined ? String(studentTaskAns[qNum]).trim().toUpperCase() : 'NO ANSWER';
           var givenDisplay = givenRaw;
-          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5' || tKey === '4' || tKey === '5') && givenRaw !== 'NO ANSWER')
-            if (Array.isArray(rawAns) && rawAns.length > 0) {
-              var userMatched = rawAns.find(function (opt) {
-                var optStr = String(opt).trim().toUpperCase();
-                return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
-              });
-              if (userMatched) {
-                givenDisplay = userMatched.trim();
-              } else if (rawAns && typeof rawAns === 'object' && rawAns[givenRaw]) {
-                givenDisplay = givenRaw + '. ' + String(rawAns[givenRaw]).trim();
-              }
+          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5') && Array.isArray(rawAns) && rawAns.length > 0 && givenRaw !== 'NO ANSWER') {
+            var userMatched = rawAns.find(function (opt) {
+              var optStr = String(opt).trim().toUpperCase();
+              return optStr === givenRaw || optStr.startsWith(givenRaw + '.') || optStr.startsWith(givenRaw + ')');
+            });
+            if (userMatched) {
+              givenDisplay = userMatched.trim();
             }
+          }
           var isCorrect = givenRaw !== 'NO ANSWER' && (givenRaw === correctLetter || givenRaw === target);
 
           listHtml += '<div style="padding:12px; border-radius:8px; border:1px solid #eee; background:' + (isCorrect ? '#f0fff4' : '#fff5f5') + '; display:flex; justify-content:space-between; align-items:center;">';
