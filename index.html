@@ -7562,7 +7562,7 @@
             (taskData && taskData.options && taskData.options[qNum - 1]) ||
             (taskData && taskData.questions && taskData.questions[qNum - 1] && taskData.questions[qNum - 1].options);
           var correctLetter = String(rootAns || '').trim().toUpperCase();
-          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5' || tKey === '4' || tKey === '5') && Array.isArray(rawAns) && rawAns.length > 0) {
+          if ((tKey === 't1' || tKey === 't3' || tKey === 't4' || tKey === 't5') && Array.isArray(rawAns) && rawAns.length > 0) {
             var matched = rawAns.find(function (opt) {
               var optStr = String(opt).trim().toUpperCase();
               return optStr === correctLetter || optStr.startsWith(correctLetter + '.') || optStr.startsWith(correctLetter + ')');
