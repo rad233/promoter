@@ -7514,6 +7514,13 @@
         }
         qNums.sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
 
+        // Filter keys for Task 6 to only include letter options (A, B, C...)
+        if (String(tKey) === 't6' || String(tKey) === '6') {
+          qNums = qNums.filter(function (qKey) {
+            return isNaN(qKey);
+          });
+        }
+
 
         // Branch for Task 7 (Essay)
         if (tKey === 't7' || tKey === '7' || taskType === 'essay' || !!taskKeyObj.prompt || !!taskData.prompt) {
