@@ -6945,14 +6945,14 @@
         if (status === 'live') {
           openLiveEditModal(code);
         } else if (status === 'ended') {
-          renewExam(code);
+          openScheduledEditModal(code);
         } else {
           openScheduledEditModal(code);
         }
       }
 
       function renewExam(code) {
-        openExamEdit(code);
+        openScheduledEditModal(code);
       }
 
       function openLiveEditModal(code) {
