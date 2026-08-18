@@ -5286,6 +5286,29 @@
         if (paidContainer) paidContainer.innerHTML = paidHtml || '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;">No paid exams scheduled yet.</div>';
       }
 
+      function handleFreeRetake(code) {
+        if (!S || !S.student || !S.student.email) {
+          // If student context isn't available, fall back directly
+          startFreeExam(code);
+          return;
+        }
+
+        // Check Supabase submissions table to verify attempt count
+        dbGet('submissions', { student_email: S.student.email, exam_code: code }).then(function (rows) {
+          if (rows && rows.length >= 2) {
+            if (typeof showToast === 'function') {
+              showToast('You have already used your 1 allowed retake for this free exam.', 'error');
+            } else {
+              alert('You have already used your 1 allowed retake for this free exam.');
+            }
+            return;
+          }
+
+          // Clear out previous timer/state and launch free exam
+          startFreeExam(code);
+        });
+      }
+
       function startFreeExam(code) {
         var ex = S.exams && S.exams[code];
         if (!ex) return;
