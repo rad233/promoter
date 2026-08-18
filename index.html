@@ -3852,10 +3852,6 @@
                     placeholder="English Language - Version 3"></div>
                 <div class="afl"><label>Exam Code</label><input type="text" id="eb-code" placeholder="EXAM2026-V3"
                     oninput="onExamCodeInput()"></div>
-                <!-- Container to display existing generated access codes when editing -->
-                <div id="eb-generated-codes-list"
-                  style="display:none; margin: 12px 0; padding: 10px 14px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; font-size: 13px; color: #333; word-break: break-all;">
-                </div>
                 <!-- Free vs Paid Toggle -->
                 <div class="afl" style="margin-top: 15px;">
                   <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600;">
@@ -7236,10 +7232,10 @@
         dbGet('exam_ids', { exam_code: code }).then(function (rows) {
           if (rows && rows.length) {
             window._ebGeneratedIDs = rows.map(function (r) { return r.student_id; });
-            var codesContainer = document.getElementById('eb-generated-codes-list') || document.getElementById('generated-ids-container');
-            if (codesContainer) {
-              codesContainer.innerHTML = '<strong>Generated Codes (' + rows.length + '):</strong> ' + window._ebGeneratedIDs.join(', ');
-              codesContainer.style.display = 'block';
+            var previewEl = document.getElementById('exam-unlock-preview');
+            if (previewEl) {
+              previewEl.innerHTML = '<strong>Generated Codes (' + rows.length + '):</strong> ' + window._ebGeneratedIDs.join(', ');
+              previewEl.style.display = 'block';
             }
           }
         });
