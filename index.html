@@ -6551,6 +6551,12 @@
         S.examCodes[upperCode] = true;
         S.exams[upperCode] = { title: title, code: upperCode, duration: duration, hasAudio: !!(S.audioURL), tasks: S.parsedTasks || [], info: infoText, pts: pts, audioURL: S.audioURL || null, is_free: isFree };
 
+        // Remove old code key from local state if the exam code was renamed
+        if (editingCode && editingCode !== upperCode) {
+          delete S.exams[editingCode];
+          delete S.examCodes[editingCode];
+        }
+
         if (window._ebGeneratedIDs && window._ebGeneratedIDs.length) {
           S.examIDs[upperCode] = window._ebGeneratedIDs.slice();
           for (var ii = 0; ii < window._ebGeneratedIDs.length; ii++) {
@@ -6946,80 +6952,7 @@
       }
 
       function renewExam(code) {
-        var ex = S.exams && S.exams[code];
-        if (!ex) return;
-
-        // Restore parsed exam content from stored data
-        if (ex.parsedExam && ex.parsedExam.tasks && ex.parsedExam.tasks.length) {
-          S.parsedExam = ex.parsedExam;
-          S.parsedTasks = ex.parsedExam.tasks || [];
-          applyParsedExam(ex.parsedExam, ex.title);
-        } else if (ex.tasks && ex.tasks.length) {
-          // Fallback: rebuild from tasks array stored in exam
-          S.parsedTasks = ex.tasks;
-          for (var rti = 0; rti < ex.tasks.length; rti++) {
-            var rt = ex.tasks[rti];
-            var rtn = rti + 1;
-            if (!TASKS[rtn]) TASKS[rtn] = {};
-            TASKS[rtn].type = rt.type || TASKS[rtn].type || '';
-            TASKS[rtn].pts = rt.pts || TASKS[rtn].pts || 0;
-            TASKS[rtn].title = 'Task ' + rtn;
-          }
-        }
-
-        // Restore answer key
-        if (ex.answer_key) {
-          S.answerKey = JSON.parse(JSON.stringify(ex.answer_key));
-        }
-
-        // Pre-fill the builder fields
-        var titleEl = document.getElementById('eb-title');
-        var codeEl = document.getElementById('eb-code');
-        var infoEl = document.getElementById('eb-info');
-        var ptsEl = document.getElementById('eb-pts');
-        var dateEl = document.getElementById('eb-date');
-        var timeEl = document.getElementById('eb-time-start');
-
-        if (titleEl) titleEl.value = ex.title || '';
-        if (codeEl) { codeEl.value = ''; codeEl.removeAttribute('data-editing'); } // clear code so admin sets new one
-        if (infoEl) infoEl.value = ex.info || '';
-        if (ptsEl) ptsEl.value = ex.pts || 70;
-        if (dateEl) dateEl.value = '';
-        if (timeEl) timeEl.value = '10:00';
-
-        var dur = ex.duration || 150;
-        var dh = Math.floor(dur / 60), dm = dur % 60;
-        scrollDrumTo('drum-hours', dh);
-        scrollDrumTo('drum-minutes', Math.floor(dm / 5) * 5);
-        onDrumScroll('hours');
-        onDrumScroll('minutes');
-
-        // Show parsed result section
-        var summEl = document.getElementById('parsed-summary');
-        var statusEl = document.getElementById('pdf-status');
-        var resultEl = document.getElementById('pdf-parsed-result');
-        var previewEl = document.getElementById('pdf-preview');
-        var nameEl = document.getElementById('pdf-name');
-        if (ex.parsedExam && ex.parsedExam.tasks && ex.parsedExam.tasks.length) {
-          var parts = [];
-          for (var i2 = 0; i2 < ex.parsedExam.tasks.length; i2++) parts.push('Task ' + ex.parsedExam.tasks[i2].task + ' (' + (ex.parsedExam.tasks[i2].question_count || 0) + 'q)');
-          if (summEl) summEl.textContent = 'Restored: ' + parts.join(', ') + (ex.parsedExam.hasIntro ? ' + Intro' : '');
-          if (statusEl) statusEl.textContent = 'Restored from previous exam';
-          if (resultEl) resultEl.style.display = 'block';
-          if (previewEl) previewEl.style.display = 'block';
-          if (nameEl) nameEl.textContent = ex.title + ' (restored)';
-        } else {
-          if (summEl) summEl.textContent = 'No PDF content saved — please upload a PDF to extract questions.';
-          if (statusEl) statusEl.textContent = 'No PDF';
-          if (resultEl) resultEl.style.display = 'block';
-        }
-
-        // Update builder title
-        var titleBar = document.querySelector('#exam-builder-view .asec-title');
-        if (titleBar) titleBar.innerHTML = '<button class="back-btn" onclick="hideExamBuilder()">&larr; Back</button> Renew Exam <span style="font-size:13px;color:var(--gray-400);font-weight:400;">— enter a new exam code to publish</span>';
-
-        showToast('Exam content restored! Enter a new code and date to republish.', 'success');
-        showExamBuilder();
+        openExamEdit(code);
       }
 
       function openLiveEditModal(code) {
@@ -7280,6 +7213,8 @@
         var timeEl = document.getElementById('eb-time-start');
         if (titleEl) titleEl.value = ex.title || '';
         if (codeEl) { codeEl.value = code; codeEl.setAttribute('data-editing', code); }
+        var isFreeEl = document.getElementById('admin-exam-is-free');
+        if (isFreeEl) isFreeEl.checked = !!ex.is_free;
         if (infoEl) infoEl.value = ex.info || '';
         if (sched) {
           if (dateEl) dateEl.value = sched.date || '';
@@ -7293,6 +7228,17 @@
         onDrumScroll('minutes');
         var titleBar = document.querySelector('#exam-builder-view .asec-title');
         if (titleBar) titleBar.innerHTML = '<button class="back-btn" onclick="hideExamBuilder()">&larr; Back</button> Edit Exam';
+
+        dbGet('exam_ids', { exam_code: code }).then(function (rows) {
+          if (rows && rows.length) {
+            window._ebGeneratedIDs = rows.map(function (r) { return r.student_id; });
+            var codesContainer = document.getElementById('eb-generated-codes-list') || document.getElementById('generated-ids-container');
+            if (codesContainer) {
+              codesContainer.innerHTML = '<strong>Generated Codes (' + rows.length + '):</strong> ' + window._ebGeneratedIDs.join(', ');
+              codesContainer.style.display = 'block';
+            }
+          }
+        });
         showExamBuilder();
       }
 
